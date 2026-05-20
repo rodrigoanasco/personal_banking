@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PersonalBankingApi.Data;
@@ -20,7 +21,9 @@ public class AccountsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<Account>>> GetAccounts()
     {
+        var userId = GetCurrentUserId();
         var accounts = await _context.Accounts
+            .Where(account => account.UserId == userId)
             .OrderBy(account => account.Name)
             .ToListAsync();
 
@@ -32,7 +35,11 @@ public class AccountsController : ControllerBase
         Guid id,
         [FromBody] UpdateAccountBalanceRequest request)
     {
-        var account = await _context.Accounts.FindAsync(id);
+        var userId = GetCurrentUserId();
+        var account = await _context.Accounts
+            .FirstOrDefaultAsync(account =>
+                account.Id == id
+                && account.UserId == userId);
 
         if (account == null)
         {
@@ -59,5 +66,11 @@ public class AccountsController : ControllerBase
             account.BalanceLastUpdatedAt,
             account.UpdatedAt
         });
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.Parse(userId!);
     }
 }

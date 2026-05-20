@@ -5,6 +5,7 @@ import {
   filterTransactionsClientSide,
   groupAccountsByCurrency
 } from "./calculations";
+import { formatCurrency } from "./format";
 
 describe("frontend finance calculations", () => {
   it("keeps monthly totals separated by currency", () => {
@@ -107,5 +108,11 @@ describe("frontend finance calculations", () => {
 
     expect(result["Food::CAD"].totalAmount).toBe(20);
     expect(result["Food::PEN"].totalAmount).toBe(30);
+  });
+
+  it("formats PEN without putting PEN at the front", () => {
+    expect(formatCurrency(120.5, "PEN", { showSign: false })).toBe(
+      "S/ 120.50 PEN"
+    );
   });
 });

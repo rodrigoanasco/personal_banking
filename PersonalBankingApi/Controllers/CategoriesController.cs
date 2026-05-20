@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PersonalBankingApi.Data;
@@ -19,10 +20,18 @@ public class CategoriesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<Category>>> GetCategories()
     {
+        var userId = GetCurrentUserId();
         var categories = await _context.Categories
+            .Where(category => category.UserId == userId)
             .OrderBy(category => category.Name)
             .ToListAsync();
 
         return Ok(categories);
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.Parse(userId!);
     }
 }

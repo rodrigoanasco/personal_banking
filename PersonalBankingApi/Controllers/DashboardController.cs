@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PersonalBankingApi.Data;
@@ -18,11 +19,13 @@ public class DashboardController : ControllerBase
     [HttpGet("summary")]
     public async Task<ActionResult> GetSummary()
     {
+        var userId = GetCurrentUserId();
         var today = DateTime.UtcNow;
         var monthStart = new DateOnly(today.Year, today.Month, 1);
         var nextMonthStart = monthStart.AddMonths(1);
 
         var accountBalances = await _context.Accounts
+            .Where(account => account.UserId == userId)
             .OrderBy(account => account.Name)
             .Select(account => new
             {
@@ -40,6 +43,7 @@ public class DashboardController : ControllerBase
             .ToListAsync();
 
         var balancesByCurrency = await _context.Accounts
+            .Where(account => account.UserId == userId)
             .GroupBy(account => account.Currency)
             .Select(group => new
             {
@@ -53,7 +57,8 @@ public class DashboardController : ControllerBase
 
         var currentMonthTransactions = _context.Transactions
             .Where(transaction =>
-                transaction.TransactionDate >= monthStart
+                transaction.UserId == userId
+                && transaction.TransactionDate >= monthStart
                 && transaction.TransactionDate < nextMonthStart);
 
         var totalExpenses = await currentMonthTransactions
@@ -111,6 +116,7 @@ public class DashboardController : ControllerBase
             .ToListAsync();
 
         var recentTransactions = await _context.Transactions
+            .Where(transaction => transaction.UserId == userId)
             .Join(
                 _context.Accounts,
                 transaction => transaction.AccountId,
@@ -167,5 +173,11 @@ public class DashboardController : ControllerBase
             ExpensesByCategory = expensesByCategory,
             RecentTransactions = recentTransactions
         });
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.Parse(userId!);
     }
 }

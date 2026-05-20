@@ -1,5 +1,5 @@
 import "./globals.css";
-import { AppShell } from "@/components/AppShell";
+import { AuthGate } from "@/components/AuthGate";
 
 export const metadata = {
   title: "Personal Banking Tracker",
@@ -10,7 +10,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <AppShell>{children}</AppShell>
+        <AuthGate>{children}</AuthGate>
       </body>
     </html>
   );

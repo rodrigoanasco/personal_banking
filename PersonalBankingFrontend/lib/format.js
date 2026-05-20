@@ -1,11 +1,17 @@
 export function formatCurrency(amount, currency, options = {}) {
   const normalizedCurrency = currency || "CAD";
   const value = Number(amount || 0);
-  const formatted = new Intl.NumberFormat("en-CA", {
-    style: "currency",
-    currency: normalizedCurrency,
-    currencyDisplay: "narrowSymbol"
+  const number = new Intl.NumberFormat("en-CA", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   }).format(Math.abs(value));
+  const symbols = {
+    CAD: "$",
+    USD: "$",
+    PEN: "S/ "
+  };
+  const symbol = symbols[normalizedCurrency] || "";
+  const formatted = `${symbol}${number}`;
 
   if (options.showSign === false) {
     return `${formatted} ${normalizedCurrency}`;

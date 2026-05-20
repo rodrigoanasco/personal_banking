@@ -14,6 +14,7 @@ import {
   calculateMonthlyTotalsByCurrency,
   toSortedCategoryTotals
 } from "@/lib/calculations";
+import { formatCurrency } from "@/lib/format";
 import { AccountCard } from "@/components/AccountCard";
 import { CurrencyAmountList } from "@/components/CurrencyAmountList";
 import { ErrorBanner } from "@/components/Feedback";
@@ -83,16 +84,6 @@ export default function DashboardPage() {
     [transactions]
   );
 
-  const creditAccounts = useMemo(
-    () =>
-      (summary?.accountBalances || []).filter((account) =>
-        `${account.name} ${account.accountType} ${account.accountSubtype}`
-          .toLowerCase()
-          .includes("credit")
-      ),
-    [summary]
-  );
-
   return (
     <>
       <PageHeader
@@ -130,13 +121,14 @@ export default function DashboardPage() {
               <CurrencyAmountList totals={monthlyIncome} emptyLabel="No income this month" />
             </SummaryCard>
             <SummaryCard icon={CreditCard} label="Credit cards">
-              <CurrencyAmountList
-                totals={creditAccounts.map((account) => ({
-                  currency: account.currency,
-                  amount: account.currentBalance || 0
-                }))}
-                emptyLabel="No credit account"
-              />
+              <div className="credit-limit-summary">
+                <strong>
+                  {formatCurrency(10000, "USD", {
+                    showSign: false
+                  })}
+                </strong>
+                <span>Card limit</span>
+              </div>
             </SummaryCard>
           </section>
 

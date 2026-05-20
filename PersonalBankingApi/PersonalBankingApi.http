@@ -4,6 +4,35 @@
 @TransactionId = 00000000-0000-0000-0000-000000000000
 @UserId = 00000000-0000-0000-0000-000000000000
 
+POST {{PersonalBankingApi_HostAddress}}/api/auth/hash-password
+Content-Type: application/json
+
+{
+  "password": "TemporaryStrongPassword123!"
+}
+
+###
+
+POST {{PersonalBankingApi_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "your-email@example.com",
+  "password": "TemporaryStrongPassword123!"
+}
+
+###
+
+GET {{PersonalBankingApi_HostAddress}}/api/auth/me
+Accept: application/json
+
+###
+
+POST {{PersonalBankingApi_HostAddress}}/api/auth/logout
+Accept: application/json
+
+###
+
 GET {{PersonalBankingApi_HostAddress}}/api/accounts
 Accept: application/json
 

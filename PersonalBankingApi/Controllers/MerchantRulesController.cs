@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PersonalBankingApi.Data;
@@ -20,7 +21,9 @@ public class MerchantRulesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult> GetMerchantRules()
     {
+        var userId = GetCurrentUserId();
         var rules = await _context.MerchantRules
+            .Where(rule => rule.UserId == userId)
             .Join(
                 _context.Categories,
                 rule => rule.CategoryId,
@@ -48,11 +51,6 @@ public class MerchantRulesController : ControllerBase
     public async Task<ActionResult> CreateMerchantRule(
         [FromBody] CreateMerchantRuleRequest request)
     {
-        if (request.UserId == Guid.Empty)
-        {
-            return BadRequest(new { message = "UserId is required." });
-        }
-
         if (request.CategoryId == Guid.Empty)
         {
             return BadRequest(new { message = "CategoryId is required." });
@@ -63,8 +61,11 @@ public class MerchantRulesController : ControllerBase
             return BadRequest(new { message = "MerchantNormalizedName is required." });
         }
 
+        var userId = GetCurrentUserId();
         var categoryExists = await _context.Categories
-            .AnyAsync(category => category.Id == request.CategoryId);
+            .AnyAsync(category =>
+                category.Id == request.CategoryId
+                && category.UserId == userId);
 
         if (!categoryExists)
         {
@@ -76,7 +77,7 @@ public class MerchantRulesController : ControllerBase
         var merchantRule = new MerchantRule
         {
             Id = Guid.NewGuid(),
-            UserId = request.UserId,
+            UserId = userId,
             MerchantName = string.IsNullOrWhiteSpace(request.MerchantName)
                 ? null
                 : request.MerchantName.Trim(),
@@ -104,5 +105,11 @@ public class MerchantRulesController : ControllerBase
                 merchantRule.MatchType
             }
         );
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.Parse(userId!);
     }
 }

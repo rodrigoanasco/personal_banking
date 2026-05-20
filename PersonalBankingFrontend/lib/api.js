@@ -13,6 +13,7 @@ export class ApiError extends Error {
 async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {})
@@ -33,6 +34,23 @@ async function apiRequest(path, options = {}) {
   }
 
   return data;
+}
+
+export function login(payload) {
+  return apiRequest("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function logout() {
+  return apiRequest("/api/auth/logout", {
+    method: "POST"
+  });
+}
+
+export function getCurrentUser() {
+  return apiRequest("/api/auth/me");
 }
 
 function appendFilter(searchParams, key, value) {

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PersonalBankingApi.Data;
@@ -24,7 +25,9 @@ public class TransactionsController : ControllerBase
         [FromQuery] string? type,
         [FromQuery] string? currency)
     {
-        var query = _context.Transactions.AsQueryable();
+        var userId = GetCurrentUserId();
+        var query = _context.Transactions
+            .Where(transaction => transaction.UserId == userId);
 
         if (accountId.HasValue)
         {
@@ -57,8 +60,11 @@ public class TransactionsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult> GetTransaction(Guid id)
     {
+        var userId = GetCurrentUserId();
         var transaction = await BuildTransactionResponseQuery(
-                _context.Transactions.Where(transaction => transaction.Id == id)
+                _context.Transactions.Where(transaction =>
+                    transaction.Id == id
+                    && transaction.UserId == userId)
             )
             .FirstOrDefaultAsync();
 
@@ -81,7 +87,11 @@ public class TransactionsController : ControllerBase
             return BadRequest(new { message = validationError });
         }
 
-        var account = await _context.Accounts.FindAsync(request.AccountId);
+        var userId = GetCurrentUserId();
+        var account = await _context.Accounts
+            .FirstOrDefaultAsync(account =>
+                account.Id == request.AccountId
+                && account.UserId == userId);
 
         if (account == null)
         {
@@ -91,7 +101,9 @@ public class TransactionsController : ControllerBase
         if (request.CategoryId.HasValue)
         {
             var categoryExists = await _context.Categories
-                .AnyAsync(category => category.Id == request.CategoryId.Value);
+                .AnyAsync(category =>
+                    category.Id == request.CategoryId.Value
+                    && category.UserId == userId);
 
             if (!categoryExists)
             {
@@ -111,7 +123,7 @@ public class TransactionsController : ControllerBase
         var transaction = new Transaction
         {
             Id = Guid.NewGuid(),
-            UserId = account.UserId,
+            UserId = userId,
             AccountId = account.Id,
             CategoryId = request.CategoryId,
             MerchantName = NormalizeOptionalText(request.MerchantName),
@@ -150,7 +162,11 @@ public class TransactionsController : ControllerBase
         Guid id,
         [FromBody] UpdateTransactionCategoryRequest request)
     {
-        var transaction = await _context.Transactions.FindAsync(id);
+        var userId = GetCurrentUserId();
+        var transaction = await _context.Transactions
+            .FirstOrDefaultAsync(transaction =>
+                transaction.Id == id
+                && transaction.UserId == userId);
 
         if (transaction == null)
         {
@@ -160,7 +176,9 @@ public class TransactionsController : ControllerBase
         if (request.CategoryId.HasValue)
         {
             var categoryExists = await _context.Categories
-                .AnyAsync(category => category.Id == request.CategoryId.Value);
+                .AnyAsync(category =>
+                    category.Id == request.CategoryId.Value
+                    && category.UserId == userId);
 
             if (!categoryExists)
             {
@@ -183,7 +201,7 @@ public class TransactionsController : ControllerBase
             var merchantRule = await _context.MerchantRules
                 .OrderByDescending(rule => rule.UpdatedAt)
                 .FirstOrDefaultAsync(rule =>
-                    rule.UserId == transaction.UserId
+                    rule.UserId == userId
                     && rule.MerchantNormalizedName == merchantNormalizedName);
 
             if (merchantRule == null)
@@ -191,7 +209,7 @@ public class TransactionsController : ControllerBase
                 merchantRule = new MerchantRule
                 {
                     Id = Guid.NewGuid(),
-                    UserId = transaction.UserId,
+                    UserId = userId,
                     MerchantName = transaction.MerchantName,
                     MerchantNormalizedName = merchantNormalizedName,
                     CategoryId = request.CategoryId.Value,
@@ -228,15 +246,19 @@ public class TransactionsController : ControllerBase
     [HttpPost("apply-merchant-rules")]
     public async Task<ActionResult> ApplyMerchantRules()
     {
+        var userId = GetCurrentUserId();
         var uncategorizedTransactions = await _context.Transactions
             .Where(transaction =>
-                transaction.CategoryId == null
+                transaction.UserId == userId
+                && transaction.CategoryId == null
                 && transaction.MerchantNormalizedName != null
                 && transaction.MerchantNormalizedName != string.Empty)
             .ToListAsync();
 
         var merchantRules = await _context.MerchantRules
-            .Where(rule => rule.MerchantNormalizedName != string.Empty)
+            .Where(rule =>
+                rule.UserId == userId
+                && rule.MerchantNormalizedName != string.Empty)
             .OrderByDescending(rule => rule.UpdatedAt)
             .ToListAsync();
 
@@ -365,6 +387,12 @@ public class TransactionsController : ControllerBase
     private static string NormalizeMerchantName(string merchantName)
     {
         return merchantName.Trim().ToLowerInvariant();
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.Parse(userId!);
     }
 
     private sealed class TransactionResponse
