@@ -1,6 +1,98 @@
 @PersonalBankingApi_HostAddress = http://localhost:5288
+@AccountId = 00000000-0000-0000-0000-000000000000
+@CategoryId = 00000000-0000-0000-0000-000000000000
+@TransactionId = 00000000-0000-0000-0000-000000000000
+@UserId = 00000000-0000-0000-0000-000000000000
 
-GET {{PersonalBankingApi_HostAddress}}/weatherforecast/
+GET {{PersonalBankingApi_HostAddress}}/api/accounts
 Accept: application/json
 
 ###
+
+PUT {{PersonalBankingApi_HostAddress}}/api/accounts/{{AccountId}}/balance
+Content-Type: application/json
+
+{
+  "currentBalance": 1250.75,
+  "availableBalance": 1200.75
+}
+
+###
+
+GET {{PersonalBankingApi_HostAddress}}/api/categories
+Accept: application/json
+
+###
+
+GET {{PersonalBankingApi_HostAddress}}/api/transactions
+Accept: application/json
+
+###
+
+GET {{PersonalBankingApi_HostAddress}}/api/transactions?currency=CAD&type=expense
+Accept: application/json
+
+###
+
+GET {{PersonalBankingApi_HostAddress}}/api/transactions/{{TransactionId}}
+Accept: application/json
+
+###
+
+POST {{PersonalBankingApi_HostAddress}}/api/transactions
+Content-Type: application/json
+
+{
+  "accountId": "{{AccountId}}",
+  "categoryId": "{{CategoryId}}",
+  "merchantName": "Starbucks Coffee",
+  "merchantNormalizedName": "starbucks",
+  "description": "Coffee",
+  "amount": 6.75,
+  "currency": "CAD",
+  "transactionType": "expense",
+  "transactionDate": "2026-05-19",
+  "postedDate": "2026-05-20",
+  "city": "Vancouver",
+  "country": "CA",
+  "isPending": false,
+  "notes": "Manual test transaction"
+}
+
+###
+
+PUT {{PersonalBankingApi_HostAddress}}/api/transactions/{{TransactionId}}/category
+Content-Type: application/json
+
+{
+  "categoryId": "{{CategoryId}}",
+  "createMerchantRule": true
+}
+
+###
+
+POST {{PersonalBankingApi_HostAddress}}/api/transactions/apply-merchant-rules
+Accept: application/json
+
+###
+
+GET {{PersonalBankingApi_HostAddress}}/api/merchant-rules
+Accept: application/json
+
+###
+
+POST {{PersonalBankingApi_HostAddress}}/api/merchant-rules
+Content-Type: application/json
+
+{
+  "userId": "{{UserId}}",
+  "merchantName": "Starbucks Coffee",
+  "merchantNormalizedName": "starbucks",
+  "categoryId": "{{CategoryId}}",
+  "matchType": "exact"
+}
+
+###
+
+GET {{PersonalBankingApi_HostAddress}}/api/dashboard/summary
+Accept: application/json

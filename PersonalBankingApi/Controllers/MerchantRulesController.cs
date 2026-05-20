@@ -48,6 +48,21 @@ public class MerchantRulesController : ControllerBase
     public async Task<ActionResult> CreateMerchantRule(
         [FromBody] CreateMerchantRuleRequest request)
     {
+        if (request.UserId == Guid.Empty)
+        {
+            return BadRequest(new { message = "UserId is required." });
+        }
+
+        if (request.CategoryId == Guid.Empty)
+        {
+            return BadRequest(new { message = "CategoryId is required." });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.MerchantNormalizedName))
+        {
+            return BadRequest(new { message = "MerchantNormalizedName is required." });
+        }
+
         var categoryExists = await _context.Categories
             .AnyAsync(category => category.Id == request.CategoryId);
 
@@ -56,18 +71,22 @@ public class MerchantRulesController : ControllerBase
             return BadRequest(new { message = "Category does not exist." });
         }
 
+        var now = DateTime.UtcNow;
+
         var merchantRule = new MerchantRule
         {
             Id = Guid.NewGuid(),
             UserId = request.UserId,
-            MerchantName = request.MerchantName,
-            MerchantNormalizedName = request.MerchantNormalizedName,
+            MerchantName = string.IsNullOrWhiteSpace(request.MerchantName)
+                ? null
+                : request.MerchantName.Trim(),
+            MerchantNormalizedName = request.MerchantNormalizedName.Trim(),
             CategoryId = request.CategoryId,
             MatchType = string.IsNullOrWhiteSpace(request.MatchType)
                 ? "exact"
-                : request.MatchType,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+                : request.MatchType.Trim().ToLowerInvariant(),
+            CreatedAt = now,
+            UpdatedAt = now
         };
 
         _context.MerchantRules.Add(merchantRule);

@@ -1,37 +1,316 @@
 # Personal Banking Tracker
 
-App made to track transactions from personal banking applications.
+App made to track, organize, and categorize transactions from personal banking applications.
 
 Current banks planned:
 - Scotiabank
 - BCP
 
+## Current Backend
+
+The project currently contains an ASP.NET Core API backed by PostgreSQL through Entity Framework Core.
+
+The API can:
+- Read accounts.
+- Read categories.
+- Read transactions with account and optional category details.
+- Filter transactions by account, category, transaction type, and currency.
+- Read one transaction by ID.
+- Create manual/test transactions.
+- Manually update a transaction category.
+- Optionally create or update merchant rules while categorizing a transaction.
+- Apply merchant rules to uncategorized transactions.
+- Update account balances.
+- Return a dashboard summary for the frontend.
+- Create and list merchant rules that connect normalized merchant names to categories.
+
+Merchant rules are the start of the automatic categorization flow. The backend can now store rules, create or update a rule while manually categorizing a transaction, and apply matching rules to uncategorized transactions.
+
+## Current Frontend
+
+The project now also contains a React + Next.js frontend in `PersonalBankingFrontend`.
+
+The frontend can:
+- Show the main dashboard first.
+- Display account balances grouped by currency.
+- Display current-month income and expenses without mixing CAD and PEN.
+- Show recent transactions with readable account and category names.
+- Filter transactions by account, category, type, currency, search text, and date range.
+- Update transaction categories from the transaction list.
+- Save a merchant rule while categorizing a transaction.
+- Apply merchant rules to uncategorized transactions.
+- Add manual/test transactions.
+- Update account balances.
+- View categories and merchant rules.
+- Create new merchant rules.
+
+The frontend only calls the ASP.NET Core API. It does not connect directly to PostgreSQL and does not contain database credentials.
+
+## API Endpoints
+
+### Accounts
+
+```http
+GET /api/accounts
+```
+
+Returns accounts ordered by name.
+
+Update an account balance:
+
+```http
+PUT /api/accounts/{id}/balance
+Content-Type: application/json
+
+{
+  "currentBalance": 1250.75,
+  "availableBalance": 1200.75
+}
+```
+
+Updates `current_balance`, `available_balance`, `balance_last_updated_at`, and `updated_at`.
+
+### Categories
+
+```http
+GET /api/categories
+```
+
+Returns categories ordered by name.
+
+### Transactions
+
+```http
+GET /api/transactions
+```
+
+Returns transactions ordered by newest transaction date first. Each result includes transaction details, account information, and category information when a category is assigned.
+
+Optional query filters:
+- `accountId`
+- `categoryId`
+- `type`
+- `currency`
+
+Example:
+
+```http
+GET /api/transactions?currency=USD&type=expense
+```
+
+Get one transaction:
+
+```http
+GET /api/transactions/{id}
+```
+
+Returns one transaction with account and category names. Returns `404` when the transaction does not exist.
+
+Create a manual transaction:
+
+```http
+POST /api/transactions
+Content-Type: application/json
+
+{
+  "accountId": "00000000-0000-0000-0000-000000000000",
+  "categoryId": "00000000-0000-0000-0000-000000000000",
+  "merchantName": "Starbucks Coffee",
+  "merchantNormalizedName": "starbucks",
+  "description": "Coffee",
+  "amount": 6.75,
+  "currency": "CAD",
+  "transactionType": "expense",
+  "transactionDate": "2026-05-19",
+  "postedDate": "2026-05-20",
+  "city": "Vancouver",
+  "country": "CA",
+  "isPending": false,
+  "notes": "Manual test transaction"
+}
+```
+
+Required fields are `accountId`, `amount`, `currency`, `transactionType`, and `transactionDate`. The API validates that the account exists and, when provided, that the category exists. If `merchantNormalizedName` is omitted but `merchantName` is provided, the backend creates a simple lowercase normalized merchant name.
+
+Update a transaction category:
+
+```http
+PUT /api/transactions/{id}/category
+Content-Type: application/json
+
+{
+  "categoryId": "00000000-0000-0000-0000-000000000000",
+  "createMerchantRule": true
+}
+```
+
+Set `categoryId` to `null` to remove the category from a transaction. The API validates that the transaction exists and, when provided, that the category exists.
+
+When `createMerchantRule` is `true`, `categoryId` has a value, and the transaction has a normalized merchant name, the API creates or updates a matching `merchant_rules` row for the same user and merchant.
+
+Apply merchant rules to uncategorized transactions:
+
+```http
+POST /api/transactions/apply-merchant-rules
+```
+
+Matches uncategorized transactions against `merchant_rules` by `user_id` and `merchant_normalized_name`, updates matching transaction categories, and returns how many transactions were updated.
+
+### Merchant Rules
+
+```http
+GET /api/merchant-rules
+```
+
+Returns merchant rules joined with their category names, ordered by normalized merchant name.
+
+Create a merchant rule:
+
+```http
+POST /api/merchant-rules
+Content-Type: application/json
+
+{
+  "userId": "00000000-0000-0000-0000-000000000000",
+  "merchantName": "Starbucks Coffee",
+  "merchantNormalizedName": "starbucks",
+  "categoryId": "00000000-0000-0000-0000-000000000000",
+  "matchType": "exact"
+}
+```
+
+If `matchType` is blank, the API defaults it to `exact`. The API validates that the selected category exists before creating the rule.
+
+### Dashboard
+
+```http
+GET /api/dashboard/summary
+```
+
+Returns:
+- Account balances for display cards.
+- Account balances grouped by currency.
+- Current-month total expenses.
+- Current-month total income.
+- Current-month expenses by category.
+- Recent transactions, newest first.
+
+## Data Tables Currently Modeled
+
+- `accounts`
+- `categories`
+- `transactions`
+- `merchant_rules`
+
+The C# models map to these PostgreSQL tables using `[Table]` and `[Column]` attributes.
+
 ## Current Setup Steps
 
 1. Create the PostgreSQL database and first tables using pgAdmin4.
 
-   pgAdmin4 is the database administration tool being used to visually create and manage the PostgreSQL database. PostgreSQL is the actual relational database engine where the banking tracker data will be stored.
+   pgAdmin4 is the database administration tool being used to visually create and manage the PostgreSQL database. PostgreSQL is the relational database engine where the banking tracker data is stored.
 
-2. Install .NET and create/work inside the API project.
+2. Install the .NET SDK and work inside the API project.
 
-   This project uses .NET for the backend API. The API will be responsible for connecting to the database, applying business logic, and exposing endpoints that can later be used by a frontend or another client.
+   This project targets `.NET 10` and uses ASP.NET Core for the backend API.
 
-3. Add the Entity Framework Core packages for PostgreSQL.
+3. Add or restore the Entity Framework Core packages for PostgreSQL.
 
    From inside the API project folder:
+
+   ```bash
+   dotnet restore
+   ```
+
+   The project already references:
 
    ```bash
    dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
    dotnet add package Microsoft.EntityFrameworkCore.Design
    ```
 
+4. Configure the PostgreSQL connection string.
+
+   The API reads `DefaultConnection` from `PersonalBankingApi/appsettings.json`.
+
+   For local development, update the host, port, database name, username, and password to match your PostgreSQL setup. Avoid committing real shared credentials; use user secrets or local-only configuration before sharing the repo.
+
+5. Run the API.
+
+   From inside `PersonalBankingApi`:
+
+   ```bash
+   dotnet run
+   ```
+
+   In development, OpenAPI is mapped by the app and the controllers are available under `/api/...`.
+
+   The API also allows local frontend requests from `http://localhost:3000`, `https://localhost:3000`, `http://localhost:3001`, and `https://localhost:3001`.
+
+6. Keep generated files out of Git.
+
+   The `.gitignore` file excludes generated .NET folders like `bin/` and `obj/`, plus common local files such as IDE settings, logs, temporary files, environment variables, local secrets, database dumps, and possible frontend dependencies like `node_modules/`.
+
+   If build files were already tracked before adding `.gitignore`, they can be removed from Git tracking without deleting them from the computer:
+
+   ```bash
+   git rm -r --cached PersonalBankingApi/bin PersonalBankingApi/obj
+   ```
+
+## Run The App Locally
+
+Start the backend API:
+
+```bash
+cd PersonalBankingApi
+dotnet run
+```
+
+The API runs at:
+
+```text
+http://localhost:5288
+```
+
+Start the frontend in a second terminal:
+
+```bash
+cd PersonalBankingFrontend
+npm install
+npm run dev
+```
+
+The frontend runs at:
+
+```text
+http://localhost:3000
+```
+
+The frontend API base URL is configured through:
+
+```text
+NEXT_PUBLIC_API_BASE_URL=http://localhost:5288
+```
+
+You can copy `PersonalBankingFrontend/.env.example` to `PersonalBankingFrontend/.env.local` if the API URL changes.
+
+Useful frontend commands:
+
+```bash
+npm run test
+npm run build
+```
+
 ## Why These Technologies Work Together
 
-- **PostgreSQL** stores the banking data in relational tables, which is useful for structured information like accounts, banks, transactions, categories, and balances.
+- **PostgreSQL** stores structured banking data such as accounts, transactions, categories, merchant rules, and balances.
 - **pgAdmin4** provides a visual interface to create, inspect, and manage the PostgreSQL database while the database structure is still being planned.
-- **.NET** is used to build the backend API for the banking tracker.
-- **Entity Framework Core** is the Object-Relational Mapper (ORM). It lets the .NET code work with database tables using C# classes instead of writing raw SQL for every operation.
-- **Npgsql.EntityFrameworkCore.PostgreSQL** is the PostgreSQL provider for Entity Framework Core. It allows EF Core to communicate specifically with PostgreSQL.
-- **Microsoft.EntityFrameworkCore.Design** adds design-time tools for EF Core, such as migrations and database scaffolding. This will be useful later when the database structure is managed from code or when models are generated/updated.
+- **.NET / ASP.NET Core** runs the backend API.
+- **React + Next.js** runs the frontend dashboard and transaction management UI.
+- **JavaScript** is used for the frontend application code.
+- **Entity Framework Core** lets the .NET code work with database tables using C# classes instead of writing raw SQL for every operation.
+- **Npgsql.EntityFrameworkCore.PostgreSQL** allows EF Core to communicate with PostgreSQL.
+- **Microsoft.EntityFrameworkCore.Design** adds EF Core design-time tooling, such as migrations and database scaffolding.
+- **Git** tracks the project history, while **`.gitignore`** keeps generated files, local settings, and sensitive configuration out of the repository.
 
-In short: PostgreSQL stores the data, pgAdmin4 helps manage it visually, .NET runs the API, EF Core maps C# code to database tables, and Npgsql makes that EF Core connection work with PostgreSQL.
+In short: PostgreSQL stores the data, pgAdmin4 helps manage it visually, ASP.NET Core exposes the API, EF Core maps C# code to database tables, Npgsql connects EF Core to PostgreSQL, and merchant rules power automatic transaction categorization.
