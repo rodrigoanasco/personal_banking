@@ -1,10 +1,126 @@
 # Personal Banking Tracker
 
-App made to track, organize, and categorize transactions from personal banking applications.
+Personal Banking Tracker is a full-stack personal finance app built to track, organize, categorize, and eventually sync real banking transactions from personal accounts.
+
+The project started as a backend/API and PostgreSQL database exercise, then grew into a complete portfolio-style application with:
+- A protected ASP.NET Core Web API.
+- A PostgreSQL relational database.
+- Entity Framework Core models and LINQ-based queries.
+- A React + Next.js frontend.
+- Manual transaction and balance management.
+- Merchant-rule automation.
+- Login/password protection.
+- Plaid Sandbox integration for future bank/card linking.
 
 Current banks planned:
 - Scotiabank
 - BCP
+
+## Project Purpose
+
+The goal is to build a personal banking dashboard that lets one owner see account balances, recent transactions, monthly income, monthly spending, category breakdowns, and uncategorized activity without opening pgAdmin or writing SQL.
+
+The app is personal-only right now, not a public multi-user SaaS. It still uses a `users` table and login system so the financial data is protected and scoped to the signed-in user.
+
+This project is also intentionally aligned with the kinds of technologies requested in Microsoft-stack and React-oriented junior software roles:
+- C# and ASP.NET Core Web API.
+- Entity Framework Core.
+- LINQ queries.
+- PostgreSQL relational data modeling.
+- React and JavaScript.
+- Next.js frontend structure.
+- API integration.
+- Authentication, data scoping, and local secrets.
+- Reusable UI components.
+- Basic automated tests.
+
+## High-Level Architecture
+
+```text
+React / Next.js frontend
+        |
+        | HTTP requests with auth cookie
+        v
+ASP.NET Core Web API
+        |
+        | Entity Framework Core + Npgsql
+        v
+PostgreSQL database
+        ^
+        |
+Plaid API integration for sandbox bank/card sync
+```
+
+The frontend never connects directly to PostgreSQL. It only calls the API. Sensitive values like Plaid secrets should be stored with .NET user-secrets or environment variables, not committed to the repository.
+
+## What Is Already Built
+
+User and security:
+- Login screen before the dashboard.
+- PBKDF2 password hashing.
+- HTTP-only cookie authentication.
+- Logout from the sidebar.
+- API protection for account, transaction, category, merchant rule, dashboard, and Plaid endpoints.
+- User-scoped queries so a signed-in user only sees their own records.
+
+Dashboard:
+- Account balance cards grouped by currency.
+- Current-month spending.
+- Current-month income.
+- Fixed credit-card limit display.
+- Recent transactions.
+- Spending-by-category summary.
+- Clean minimalist white/silver UI with a collapsible sidebar.
+
+Transactions:
+- Full transaction list.
+- Filters by account, category, transaction type, and currency.
+- Client-side search by merchant, description, account, category, city, country, and notes.
+- Date range filtering.
+- Manual transaction creation.
+- Category editing from the list.
+- Option to remember a merchant while categorizing.
+- Apply merchant rules to uncategorized transactions.
+
+Accounts:
+- Account cards showing institution, account type, currency, status, current balance, and available balance.
+- Balance update form.
+- Plaid connect panel.
+- Plaid sync button.
+
+Categories:
+- Category overview.
+- Active/inactive status.
+- Transaction usage count.
+
+Merchant rules:
+- View saved merchant-to-category rules.
+- Create new rules manually.
+- Create/update rules automatically while categorizing a transaction.
+
+Plaid:
+- Sandbox Plaid Link token creation.
+- Public token exchange.
+- Plaid item storage.
+- Account import into the existing `accounts` table.
+- Transaction sync into the existing `transactions` table.
+- Sync cursor support through `plaid_items.transactions_cursor`.
+
+## Current Status
+
+The local app is ready for manual use and Plaid Sandbox testing.
+
+What is done:
+- Backend builds successfully.
+- Frontend builds successfully.
+- Frontend tests pass.
+- Login and protected API access are implemented.
+- Plaid integration is coded for Sandbox.
+
+What is still pending:
+- Plaid Production/Trial approval before linking real Scotiabank data.
+- Running the `plaid_items` SQL setup in the local database if it has not already been run.
+- Switching Plaid config from `sandbox` to `production` only after Plaid gives production access.
 
 ## Current Backend
 
@@ -24,6 +140,10 @@ The API can:
 - Update account balances.
 - Return a dashboard summary for the frontend.
 - Create and list merchant rules that connect normalized merchant names to categories.
+- Create Plaid Link tokens.
+- Exchange Plaid public tokens.
+- Store Plaid items.
+- Sync Plaid accounts and transactions.
 
 Merchant rules are the start of the automatic categorization flow. The backend can now store rules, create or update a rule while manually categorizing a transaction, and apply matching rules to uncategorized transactions.
 
@@ -47,6 +167,7 @@ The frontend can:
 - Update account balances.
 - View categories and merchant rules.
 - Create new merchant rules.
+- Connect and sync Plaid Sandbox accounts from the Accounts page.
 
 The frontend only calls the ASP.NET Core API. It does not connect directly to PostgreSQL and does not contain database credentials.
 
@@ -142,6 +263,17 @@ Then start both apps, log in, open `Accounts`, and use `Connect with Plaid`.
 Plaid test credentials for Sandbox Link are provided by Plaid in their Sandbox docs. Do not enter real Scotiabank credentials while the app is using Sandbox.
 
 ## API Endpoints
+
+### Auth
+
+```http
+POST /api/auth/login
+POST /api/auth/logout
+GET /api/auth/me
+POST /api/auth/hash-password
+```
+
+`/api/auth/hash-password` is a local Development helper for creating a PBKDF2 password hash to paste into `users.password_hash`.
 
 ### Accounts
 
@@ -290,12 +422,25 @@ Returns:
 - Current-month expenses by category.
 - Recent transactions, newest first.
 
+### Plaid
+
+```http
+POST /api/plaid/link-token
+POST /api/plaid/exchange-public-token
+POST /api/plaid/sync
+GET /api/plaid/items
+```
+
+These endpoints are protected by login. They are currently intended for Plaid Sandbox testing until Production access is approved.
+
 ## Data Tables Currently Modeled
 
+- `users`
 - `accounts`
 - `categories`
 - `transactions`
 - `merchant_rules`
+- `plaid_items`
 
 The C# models map to these PostgreSQL tables using `[Table]` and `[Column]` attributes.
 
@@ -340,7 +485,7 @@ The C# models map to these PostgreSQL tables using `[Table]` and `[Column]` attr
 
    In development, OpenAPI is mapped by the app and the controllers are available under `/api/...`.
 
-   The API also allows local frontend requests from `http://localhost:3000`, `https://localhost:3000`, `http://localhost:3001`, and `https://localhost:3001`.
+   The API also allows local frontend requests from `http://localhost:3000`, `https://localhost:3000`, `http://localhost:3001`, `https://localhost:3001`, `http://localhost:3002`, and `https://localhost:3002`.
 
 6. Keep generated files out of Git.
 
@@ -406,6 +551,7 @@ npm run build
 - **Entity Framework Core** lets the .NET code work with database tables using C# classes instead of writing raw SQL for every operation.
 - **Npgsql.EntityFrameworkCore.PostgreSQL** allows EF Core to communicate with PostgreSQL.
 - **Microsoft.EntityFrameworkCore.Design** adds EF Core design-time tooling, such as migrations and database scaffolding.
+- **Plaid** provides the bank-linking path for account and transaction sync.
 - **Git** tracks the project history, while **`.gitignore`** keeps generated files, local settings, and sensitive configuration out of the repository.
 
-In short: PostgreSQL stores the data, pgAdmin4 helps manage it visually, ASP.NET Core exposes the API, EF Core maps C# code to database tables, Npgsql connects EF Core to PostgreSQL, and merchant rules power automatic transaction categorization.
+In short: PostgreSQL stores the data, pgAdmin4 helps manage it visually, ASP.NET Core exposes the API, EF Core maps C# code to database tables, Npgsql connects EF Core to PostgreSQL, React/Next.js provides the user interface, Plaid prepares the app for real account syncing, and merchant rules power automatic transaction categorization.
