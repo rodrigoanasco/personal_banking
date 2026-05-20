@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PersonalBankingApi.Data;
+using PersonalBankingApi.DTOs;
 
 namespace PersonalBankingApi.Controllers;
 
@@ -55,7 +56,12 @@ public class TransactionsController : ControllerBase
                 _context.Categories,
                 combined => combined.transaction.CategoryId,
                 category => category.Id,
-                (combined, categories) => new { combined.transaction, combined.account, categories }
+                (combined, categories) => new
+                {
+                    combined.transaction,
+                    combined.account,
+                    categories
+                }
             )
             .SelectMany(
                 result => result.categories.DefaultIfEmpty(),
@@ -83,5 +89,41 @@ public class TransactionsController : ControllerBase
             .ToListAsync();
 
         return Ok(transactions);
+    }
+
+    [HttpPut("{id}/category")]
+    public async Task<ActionResult> UpdateTransactionCategory(
+        Guid id,
+        [FromBody] UpdateTransactionCategoryRequest request)
+    {
+        var transaction = await _context.Transactions.FindAsync(id);
+
+        if (transaction == null)
+        {
+            return NotFound(new { message = "Transaction not found." });
+        }
+
+        if (request.CategoryId.HasValue)
+        {
+            var categoryExists = await _context.Categories
+                .AnyAsync(category => category.Id == request.CategoryId.Value);
+
+            if (!categoryExists)
+            {
+                return BadRequest(new { message = "Category does not exist." });
+            }
+        }
+
+        transaction.CategoryId = request.CategoryId;
+        transaction.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Transaction category updated successfully.",
+            transaction.Id,
+            transaction.CategoryId
+        });
     }
 }
