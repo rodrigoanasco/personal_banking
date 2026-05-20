@@ -10,10 +10,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("personal-banking-tracker-local")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("PersonalBankingApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c62a79c41f50b566a8f54b8dc800e3b9393c5983")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ea0f3332c64473fba1d8fc0cf874aca7a317d3bb")]
 [assembly: System.Reflection.AssemblyProductAttribute("PersonalBankingApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PersonalBankingApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -126,3 +126,26 @@ export function createMerchantRule(payload) {
 export function getDashboardSummary() {
   return apiRequest("/api/dashboard/summary");
 }
+
+export function createPlaidLinkToken() {
+  return apiRequest("/api/plaid/link-token", {
+    method: "POST"
+  });
+}
+
+export function exchangePlaidPublicToken(payload) {
+  return apiRequest("/api/plaid/exchange-public-token", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function syncPlaidData() {
+  return apiRequest("/api/plaid/sync", {
+    method: "POST"
+  });
+}
+
+export function getPlaidItems() {
+  return apiRequest("/api/plaid/items");
+}

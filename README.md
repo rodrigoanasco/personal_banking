@@ -101,6 +101,46 @@ The API uses the existing `users` table. The `password_hash` column should conta
 
 Do not store your plain password in SQL, the frontend, or documentation. Only store the generated password hash.
 
+## Plaid Sandbox Setup
+
+Plaid is used for bank/card linking. The app is wired for Sandbox first. Real Scotiabank/card linking requires Plaid Development or Production access; Sandbox uses fake test data.
+
+Do not commit Plaid credentials. Store them with .NET user-secrets:
+
+```bash
+cd PersonalBankingApi
+dotnet user-secrets set "Plaid:ClientId" "YOUR_PLAID_CLIENT_ID"
+dotnet user-secrets set "Plaid:Secret" "YOUR_PLAID_SANDBOX_SECRET"
+dotnet user-secrets set "Plaid:Environment" "sandbox"
+dotnet user-secrets set "Plaid:ClientName" "Personal Banking Tracker"
+```
+
+Create the local Plaid item table in pgAdmin before linking:
+
+```sql
+create table if not exists plaid_items (
+    id uuid primary key,
+    user_id uuid not null references users(id) on delete cascade,
+    item_id text not null,
+    access_token text not null,
+    institution_id text null,
+    institution_name text null,
+    transactions_cursor text null,
+    created_at timestamp without time zone not null,
+    updated_at timestamp without time zone not null
+);
+
+create unique index if not exists ix_plaid_items_user_item
+on plaid_items (user_id, item_id);
+
+create index if not exists ix_plaid_items_user_id
+on plaid_items (user_id);
+```
+
+Then start both apps, log in, open `Accounts`, and use `Connect with Plaid`.
+
+Plaid test credentials for Sandbox Link are provided by Plaid in their Sandbox docs. Do not enter real Scotiabank credentials while the app is using Sandbox.
+
 ## API Endpoints
 
 ### Accounts

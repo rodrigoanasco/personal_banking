@@ -9,6 +9,7 @@ import { BalanceEditor } from "@/components/BalanceEditor";
 import { CurrencyAmountList } from "@/components/CurrencyAmountList";
 import { ErrorBanner, LoadingBlock } from "@/components/Feedback";
 import { PageHeader } from "@/components/PageHeader";
+import { PlaidConnectPanel } from "@/components/PlaidConnectPanel";
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState([]);
@@ -64,6 +65,8 @@ export default function AccountsPage() {
         <LoadingBlock label="Loading accounts" />
       ) : (
         <div className="panel-stack">
+          <PlaidConnectPanel onSynced={loadAccounts} />
+
           <section className="summary-grid" aria-label="Account totals">
             <div className="summary-card success">
               <div className="summary-label">Current balances</div>

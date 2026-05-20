@@ -33,6 +33,21 @@ Accept: application/json
 
 ###
 
+POST {{PersonalBankingApi_HostAddress}}/api/plaid/link-token
+Accept: application/json
+
+###
+
+GET {{PersonalBankingApi_HostAddress}}/api/plaid/items
+Accept: application/json
+
+###
+
+POST {{PersonalBankingApi_HostAddress}}/api/plaid/sync
+Accept: application/json
+
+###
+
 GET {{PersonalBankingApi_HostAddress}}/api/accounts
 Accept: application/json
 

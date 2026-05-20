@@ -15,4 +15,5 @@ public class AppDbContext : DbContext
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<MerchantRule> MerchantRules => Set<MerchantRule>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<PlaidItem> PlaidItems => Set<PlaidItem>();
 }
