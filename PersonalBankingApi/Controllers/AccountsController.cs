@@ -68,6 +68,40 @@ public class AccountsController : ControllerBase
         });
     }
 
+    [HttpPut("{id}/planning")]
+    public async Task<ActionResult> UpdateAccountPlanning(
+        Guid id,
+        [FromBody] UpdateAccountPlanningRequest request)
+    {
+        var userId = GetCurrentUserId();
+        var account = await _context.Accounts
+            .FirstOrDefaultAsync(account =>
+                account.Id == id
+                && account.UserId == userId);
+
+        if (account == null)
+        {
+            return NotFound(new { message = "Account not found." });
+        }
+
+        var now = DateTime.UtcNow;
+
+        account.PlanningAmount = request.PlanningAmount;
+        account.UpdatedAt = now;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Account planning amount updated successfully.",
+            account.Id,
+            account.Name,
+            account.Currency,
+            account.PlanningAmount,
+            account.UpdatedAt
+        });
+    }
+
     private Guid GetCurrentUserId()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

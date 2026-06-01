@@ -44,6 +44,9 @@ public class Account
     [Column("available_balance")]
     public decimal? AvailableBalance { get; set; }
 
+    [Column("planning_amount")]
+    public decimal? PlanningAmount { get; set; }
+
     [Column("balance_last_updated_at")]
     public DateTime? BalanceLastUpdatedAt { get; set; }
 

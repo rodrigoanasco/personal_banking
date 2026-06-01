@@ -37,6 +37,7 @@ public class DashboardController : ControllerBase
                 account.Currency,
                 account.CurrentBalance,
                 account.AvailableBalance,
+                account.PlanningAmount,
                 account.BalanceLastUpdatedAt,
                 account.IsActive
             })

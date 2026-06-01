@@ -25,10 +25,27 @@ public class PlaidController : ControllerBase
     [HttpPost("link-token")]
     public async Task<ActionResult> CreateLinkToken()
     {
-        var userId = GetCurrentUserId();
-        var linkToken = await _plaidService.CreateLinkTokenAsync(userId);
+        try
+        {
+            var userId = GetCurrentUserId();
+            var linkToken = await _plaidService.CreateLinkTokenAsync(userId);
 
-        return Ok(new { LinkToken = linkToken });
+            return Ok(new { LinkToken = linkToken });
+        }
+        catch (PlaidConfigurationException error)
+        {
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { message = error.Message }
+            );
+        }
+        catch (PlaidApiException error)
+        {
+            return StatusCode(
+                StatusCodes.Status502BadGateway,
+                new { message = error.Message }
+            );
+        }
     }
 
     [HttpGet("items")]
@@ -63,9 +80,28 @@ public class PlaidController : ControllerBase
 
         var userId = GetCurrentUserId();
         var now = DateTime.UtcNow;
-        var exchangeResult = await _plaidService.ExchangePublicTokenAsync(
-            request.PublicToken
-        );
+        PlaidExchangeResult exchangeResult;
+
+        try
+        {
+            exchangeResult = await _plaidService.ExchangePublicTokenAsync(
+                request.PublicToken
+            );
+        }
+        catch (PlaidConfigurationException error)
+        {
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { message = error.Message }
+            );
+        }
+        catch (PlaidApiException error)
+        {
+            return StatusCode(
+                StatusCodes.Status502BadGateway,
+                new { message = error.Message }
+            );
+        }
 
         var plaidItem = await _context.PlaidItems
             .FirstOrDefaultAsync(item =>
@@ -98,7 +134,26 @@ public class PlaidController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        var syncResult = await SyncPlaidItemAsync(plaidItem);
+        PlaidSyncSummary syncResult;
+
+        try
+        {
+            syncResult = await SyncPlaidItemAsync(plaidItem);
+        }
+        catch (PlaidConfigurationException error)
+        {
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { message = error.Message }
+            );
+        }
+        catch (PlaidApiException error)
+        {
+            return StatusCode(
+                StatusCodes.Status502BadGateway,
+                new { message = error.Message }
+            );
+        }
 
         return Ok(new
         {
@@ -122,13 +177,30 @@ public class PlaidController : ControllerBase
 
         var totals = new PlaidSyncSummary();
 
-        foreach (var item in items)
+        try
         {
-            var itemResult = await SyncPlaidItemAsync(item);
-            totals.AccountsUpdated += itemResult.AccountsUpdated;
-            totals.TransactionsAdded += itemResult.TransactionsAdded;
-            totals.TransactionsUpdated += itemResult.TransactionsUpdated;
-            totals.TransactionsRemoved += itemResult.TransactionsRemoved;
+            foreach (var item in items)
+            {
+                var itemResult = await SyncPlaidItemAsync(item);
+                totals.AccountsUpdated += itemResult.AccountsUpdated;
+                totals.TransactionsAdded += itemResult.TransactionsAdded;
+                totals.TransactionsUpdated += itemResult.TransactionsUpdated;
+                totals.TransactionsRemoved += itemResult.TransactionsRemoved;
+            }
+        }
+        catch (PlaidConfigurationException error)
+        {
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { message = error.Message }
+            );
+        }
+        catch (PlaidApiException error)
+        {
+            return StatusCode(
+                StatusCodes.Status502BadGateway,
+                new { message = error.Message }
+            );
         }
 
         return Ok(new

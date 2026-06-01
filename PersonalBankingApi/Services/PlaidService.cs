@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
@@ -10,6 +11,10 @@ public class PlaidOptions
     public string Secret { get; set; } = string.Empty;
     public string Environment { get; set; } = "sandbox";
     public string ClientName { get; set; } = "Personal Banking Tracker";
+    public string[] CountryCodes { get; set; } = ["CA", "US"];
+    public int TransactionsDaysRequested { get; set; } = 90;
+    public string? RedirectUri { get; set; }
+    public string? WebhookUrl { get; set; }
 }
 
 public class PlaidService
@@ -27,17 +32,35 @@ public class PlaidService
     {
         EnsureConfigured();
 
-        var response = await PostPlaidAsync("/link/token/create", new
+        var request = new Dictionary<string, object?>
         {
-            user = new
+            ["user"] = new
             {
                 client_user_id = userId.ToString()
             },
-            client_name = _options.ClientName,
-            products = new[] { "transactions" },
-            country_codes = new[] { "CA", "US" },
-            language = "en"
-        });
+            ["client_name"] = _options.ClientName,
+            ["products"] = new[] { "transactions" },
+            ["country_codes"] = GetCountryCodes(),
+            ["language"] = "en",
+            ["transactions"] = new
+            {
+                days_requested = GetTransactionsDaysRequested()
+            }
+        };
+
+        var redirectUri = NormalizeOptionalText(_options.RedirectUri);
+        if (redirectUri != null)
+        {
+            request["redirect_uri"] = redirectUri;
+        }
+
+        var webhookUrl = NormalizeOptionalText(_options.WebhookUrl);
+        if (webhookUrl != null)
+        {
+            request["webhook"] = webhookUrl;
+        }
+
+        var response = await PostPlaidAsync("/link/token/create", request);
 
         return response.RootElement.GetProperty("link_token").GetString()
             ?? throw new InvalidOperationException("Plaid did not return a link token.");
@@ -129,8 +152,9 @@ public class PlaidService
 
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException(
-                $"Plaid request failed: {response.StatusCode} {responseContent}"
+            throw new PlaidApiException(
+                response.StatusCode,
+                GetPlaidErrorMessage(responseContent)
             );
         }
 
@@ -156,12 +180,14 @@ public class PlaidService
 
     private string GetBaseUrl()
     {
-        return _options.Environment.Trim().ToLowerInvariant() switch
+        return GetEnvironment() switch
         {
             "sandbox" => "https://sandbox.plaid.com",
             "development" => "https://development.plaid.com",
             "production" => "https://production.plaid.com",
-            _ => "https://sandbox.plaid.com"
+            _ => throw new PlaidConfigurationException(
+                "Plaid:Environment must be sandbox, development, production, or trial."
+            )
         };
     }
 
@@ -170,10 +196,106 @@ public class PlaidService
         if (string.IsNullOrWhiteSpace(_options.ClientId)
             || string.IsNullOrWhiteSpace(_options.Secret))
         {
-            throw new InvalidOperationException(
+            throw new PlaidConfigurationException(
                 "Plaid is not configured. Set Plaid:ClientId and Plaid:Secret using user-secrets or environment variables."
             );
         }
+
+        _ = GetEnvironment();
+        _ = GetCountryCodes();
+        _ = GetTransactionsDaysRequested();
+    }
+
+    private string GetEnvironment()
+    {
+        var environment = _options.Environment.Trim().ToLowerInvariant();
+
+        return environment switch
+        {
+            "trial" or "limited-production" or "limited_production" => "production",
+            _ => environment
+        };
+    }
+
+    private string[] GetCountryCodes()
+    {
+        var countryCodes = _options.CountryCodes
+            .Where(countryCode => !string.IsNullOrWhiteSpace(countryCode))
+            .Select(countryCode => countryCode.Trim().ToUpperInvariant())
+            .Distinct()
+            .ToArray();
+
+        if (countryCodes.Length == 0)
+        {
+            throw new PlaidConfigurationException(
+                "Plaid:CountryCodes must contain at least one supported country code."
+            );
+        }
+
+        return countryCodes;
+    }
+
+    private int GetTransactionsDaysRequested()
+    {
+        if (_options.TransactionsDaysRequested is < 1 or > 730)
+        {
+            throw new PlaidConfigurationException(
+                "Plaid:TransactionsDaysRequested must be between 1 and 730."
+            );
+        }
+
+        return _options.TransactionsDaysRequested;
+    }
+
+    private static string? NormalizeOptionalText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : value.Trim();
+    }
+
+    private static string GetPlaidErrorMessage(string responseContent)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(responseContent);
+            var root = document.RootElement;
+            var errorCode = GetOptionalJsonString(root, "error_code");
+            var errorMessage = GetOptionalJsonString(root, "error_message");
+            var requestId = GetOptionalJsonString(root, "request_id");
+            var messageParts = new List<string> { "Plaid request failed." };
+
+            if (!string.IsNullOrWhiteSpace(errorCode))
+            {
+                messageParts.Add(errorCode);
+            }
+
+            if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                messageParts.Add(errorMessage);
+            }
+
+            if (!string.IsNullOrWhiteSpace(requestId))
+            {
+                messageParts.Add($"Request ID: {requestId}");
+            }
+
+            return string.Join(" ", messageParts);
+        }
+        catch (JsonException)
+        {
+            return $"Plaid request failed. {responseContent}";
+        }
+    }
+
+    private static string? GetOptionalJsonString(
+        JsonElement element,
+        string propertyName)
+    {
+        return element.TryGetProperty(propertyName, out var property)
+            && property.ValueKind == JsonValueKind.String
+            ? property.GetString()
+            : null;
     }
 }
 
@@ -184,3 +306,22 @@ public record PlaidTransactionsSyncResult(
     IReadOnlyList<JsonElement> Modified,
     IReadOnlyList<JsonElement> Removed,
     string? NextCursor);
+
+public class PlaidConfigurationException : Exception
+{
+    public PlaidConfigurationException(string message)
+        : base(message)
+    {
+    }
+}
+
+public class PlaidApiException : Exception
+{
+    public PlaidApiException(HttpStatusCode statusCode, string message)
+        : base(message)
+    {
+        StatusCode = statusCode;
+    }
+
+    public HttpStatusCode StatusCode { get; }
+}
