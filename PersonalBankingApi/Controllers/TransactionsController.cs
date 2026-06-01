@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PersonalBankingApi.Data;
 using PersonalBankingApi.DTOs;
 using PersonalBankingApi.Models;
+using PersonalBankingApi.Services;
 
 namespace PersonalBankingApi.Controllers;
 
@@ -49,10 +50,9 @@ public class TransactionsController : ControllerBase
             query = query.Where(transaction => transaction.Currency == currency);
         }
 
-        var transactions = await BuildTransactionResponseQuery(query)
-            .OrderByDescending(transaction => transaction.TransactionDate)
-            .ThenByDescending(transaction => transaction.CreatedAt)
-            .ToListAsync();
+        var transactions = await TransactionResponseService.ToPreparedListAsync(
+            TransactionResponseService.BuildQuery(_context, query)
+        );
 
         return Ok(transactions);
     }
@@ -61,7 +61,8 @@ public class TransactionsController : ControllerBase
     public async Task<ActionResult> GetTransaction(Guid id)
     {
         var userId = GetCurrentUserId();
-        var transaction = await BuildTransactionResponseQuery(
+        var transaction = await TransactionResponseService.BuildQuery(
+                _context,
                 _context.Transactions.Where(transaction =>
                     transaction.Id == id
                     && transaction.UserId == userId)
@@ -145,7 +146,8 @@ public class TransactionsController : ControllerBase
         _context.Transactions.Add(transaction);
         await _context.SaveChangesAsync();
 
-        var createdTransaction = await BuildTransactionResponseQuery(
+        var createdTransaction = await TransactionResponseService.BuildQuery(
+                _context,
                 _context.Transactions.Where(savedTransaction => savedTransaction.Id == transaction.Id)
             )
             .FirstAsync();
@@ -302,55 +304,6 @@ public class TransactionsController : ControllerBase
         });
     }
 
-    private IQueryable<TransactionResponse> BuildTransactionResponseQuery(
-        IQueryable<Transaction> transactions)
-    {
-        return transactions
-            .Join(
-                _context.Accounts,
-                transaction => transaction.AccountId,
-                account => account.Id,
-                (transaction, account) => new { transaction, account }
-            )
-            .GroupJoin(
-                _context.Categories,
-                combined => combined.transaction.CategoryId,
-                category => category.Id,
-                (combined, categories) => new
-                {
-                    combined.transaction,
-                    combined.account,
-                    categories
-                }
-            )
-            .SelectMany(
-                result => result.categories.DefaultIfEmpty(),
-                (result, category) => new TransactionResponse
-                {
-                    Id = result.transaction.Id,
-                    UserId = result.transaction.UserId,
-                    TransactionDate = result.transaction.TransactionDate,
-                    PostedDate = result.transaction.PostedDate,
-                    MerchantName = result.transaction.MerchantName,
-                    MerchantNormalizedName = result.transaction.MerchantNormalizedName,
-                    Description = result.transaction.Description,
-                    Amount = result.transaction.Amount,
-                    Currency = result.transaction.Currency,
-                    TransactionType = result.transaction.TransactionType,
-                    City = result.transaction.City,
-                    Country = result.transaction.Country,
-                    IsPending = result.transaction.IsPending,
-                    Notes = result.transaction.Notes,
-                    CreatedAt = result.transaction.CreatedAt,
-                    UpdatedAt = result.transaction.UpdatedAt,
-                    AccountId = result.account.Id,
-                    AccountName = result.account.Name,
-                    CategoryId = category != null ? category.Id : null,
-                    CategoryName = category != null ? category.Name : null
-                }
-            );
-    }
-
     private static string? ValidateCreateTransactionRequest(
         CreateTransactionRequest request)
     {
@@ -393,29 +346,5 @@ public class TransactionsController : ControllerBase
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.Parse(userId!);
-    }
-
-    private sealed class TransactionResponse
-    {
-        public Guid Id { get; set; }
-        public Guid UserId { get; set; }
-        public DateOnly TransactionDate { get; set; }
-        public DateOnly? PostedDate { get; set; }
-        public string? MerchantName { get; set; }
-        public string? MerchantNormalizedName { get; set; }
-        public string? Description { get; set; }
-        public decimal Amount { get; set; }
-        public string Currency { get; set; } = string.Empty;
-        public string TransactionType { get; set; } = string.Empty;
-        public string? City { get; set; }
-        public string? Country { get; set; }
-        public bool IsPending { get; set; }
-        public string? Notes { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-        public Guid AccountId { get; set; }
-        public string AccountName { get; set; } = string.Empty;
-        public Guid? CategoryId { get; set; }
-        public string? CategoryName { get; set; }
     }
 }

@@ -12,6 +12,7 @@ import { getDashboardSummary, getTransactions } from "@/lib/api";
 import {
   calculateExpensesByCategory,
   calculateMonthlyTotalsByCurrency,
+  prepareTransactionsForDisplay,
   toSortedCategoryTotals
 } from "@/lib/calculations";
 import { formatCurrency } from "@/lib/format";
@@ -84,6 +85,14 @@ export default function DashboardPage() {
     [transactions]
   );
 
+  const recentTransactions = useMemo(
+    () =>
+      prepareTransactionsForDisplay(
+        summary?.recentTransactions || transactions
+      ).slice(0, 10),
+    [summary?.recentTransactions, transactions]
+  );
+
   return (
     <>
       <PageHeader
@@ -141,7 +150,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <TransactionList
-                transactions={summary?.recentTransactions || transactions.slice(0, 10)}
+                transactions={recentTransactions}
               />
             </section>
 

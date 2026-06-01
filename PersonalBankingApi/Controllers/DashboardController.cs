@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PersonalBankingApi.Data;
+using PersonalBankingApi.Services;
 
 namespace PersonalBankingApi.Controllers;
 
@@ -56,107 +57,47 @@ public class DashboardController : ControllerBase
             .OrderBy(balance => balance.Currency)
             .ToListAsync();
 
-        var currentMonthTransactions = _context.Transactions
+        var preparedTransactions = await TransactionResponseService.ToPreparedListAsync(
+            TransactionResponseService.BuildQuery(
+                _context,
+                _context.Transactions.Where(transaction => transaction.UserId == userId)
+            )
+        );
+
+        var currentMonthTransactions = preparedTransactions
             .Where(transaction =>
-                transaction.UserId == userId
-                && transaction.TransactionDate >= monthStart
-                && transaction.TransactionDate < nextMonthStart);
+                transaction.TransactionDate >= monthStart
+                && transaction.TransactionDate < nextMonthStart)
+            .ToList();
 
-        var totalExpenses = await currentMonthTransactions
-            .Where(transaction => transaction.TransactionType.ToLower() == "expense")
-            .SumAsync(transaction =>
-                transaction.Amount < 0m
-                    ? -transaction.Amount
-                    : transaction.Amount);
+        var totalExpenses = currentMonthTransactions
+            .Where(transaction => transaction.TransactionType.ToLowerInvariant() == "expense")
+            .Sum(transaction => Math.Abs(transaction.Amount));
 
-        var totalIncome = await currentMonthTransactions
-            .Where(transaction => transaction.TransactionType.ToLower() == "income")
-            .SumAsync(transaction =>
-                transaction.Amount < 0m
-                    ? -transaction.Amount
-                    : transaction.Amount);
+        var totalIncome = currentMonthTransactions
+            .Where(transaction => transaction.TransactionType.ToLowerInvariant() == "income")
+            .Sum(transaction => Math.Abs(transaction.Amount));
 
-        var expensesByCategory = await currentMonthTransactions
-            .Where(transaction => transaction.TransactionType.ToLower() == "expense")
-            .GroupJoin(
-                _context.Categories,
-                transaction => transaction.CategoryId,
-                category => category.Id,
-                (transaction, categories) => new
-                {
-                    transaction,
-                    categories
-                }
-            )
-            .SelectMany(
-                result => result.categories.DefaultIfEmpty(),
-                (result, category) => new
-                {
-                    result.transaction,
-                    category
-                }
-            )
-            .GroupBy(result => new
+        var expensesByCategory = currentMonthTransactions
+            .Where(transaction => transaction.TransactionType.ToLowerInvariant() == "expense")
+            .GroupBy(transaction => new
             {
-                CategoryId = result.category != null ? result.category.Id : (Guid?)null,
-                CategoryName = result.category != null
-                    ? result.category.Name
-                    : "Uncategorized"
+                transaction.CategoryId,
+                CategoryName = transaction.CategoryName ?? "Uncategorized"
             })
             .Select(group => new
             {
                 group.Key.CategoryId,
                 group.Key.CategoryName,
-                TotalAmount = group.Sum(result =>
-                    result.transaction.Amount < 0m
-                        ? -result.transaction.Amount
-                        : result.transaction.Amount),
+                TotalAmount = group.Sum(transaction => Math.Abs(transaction.Amount)),
                 TransactionCount = group.Count()
             })
             .OrderByDescending(category => category.TotalAmount)
-            .ToListAsync();
+            .ToList();
 
-        var recentTransactions = await _context.Transactions
-            .Where(transaction => transaction.UserId == userId)
-            .Join(
-                _context.Accounts,
-                transaction => transaction.AccountId,
-                account => account.Id,
-                (transaction, account) => new { transaction, account }
-            )
-            .GroupJoin(
-                _context.Categories,
-                combined => combined.transaction.CategoryId,
-                category => category.Id,
-                (combined, categories) => new
-                {
-                    combined.transaction,
-                    combined.account,
-                    categories
-                }
-            )
-            .SelectMany(
-                result => result.categories.DefaultIfEmpty(),
-                (result, category) => new
-                {
-                    result.transaction.Id,
-                    result.transaction.TransactionDate,
-                    result.transaction.MerchantName,
-                    result.transaction.MerchantNormalizedName,
-                    result.transaction.Description,
-                    result.transaction.Amount,
-                    result.transaction.Currency,
-                    result.transaction.TransactionType,
-                    result.transaction.IsPending,
-                    AccountId = result.account.Id,
-                    AccountName = result.account.Name,
-                    CategoryId = category != null ? category.Id : (Guid?)null,
-                    CategoryName = category != null ? category.Name : null
-                }
-            )
-            .OrderByDescending(transaction => transaction.TransactionDate)
+        var recentTransactions = preparedTransactions
             .Take(10)
-            .ToListAsync();
+            .ToList();
 
         return Ok(new
         {

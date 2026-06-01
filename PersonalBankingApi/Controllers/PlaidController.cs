@@ -377,6 +377,7 @@ public class PlaidController : ControllerBase
         DateTime now)
     {
         var externalTransactionId = GetString(plaidTransaction, "transaction_id");
+        var pendingTransactionId = GetString(plaidTransaction, "pending_transaction_id");
         var providerAccountId = GetString(plaidTransaction, "account_id");
 
         if (string.IsNullOrWhiteSpace(externalTransactionId)
@@ -405,18 +406,35 @@ public class PlaidController : ControllerBase
 
         if (transaction == null)
         {
+            transaction = await FindPendingReplacementAsync(
+                userId,
+                pendingTransactionId
+            );
+        }
+        else
+        {
+            await RemovePendingReplacementDuplicateAsync(
+                userId,
+                pendingTransactionId,
+                transaction.Id
+            );
+        }
+
+        if (transaction == null)
+        {
             transaction = new Transaction
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 AccountId = account.Id,
-                ExternalTransactionId = externalTransactionId,
                 CreatedAt = now
             };
 
             _context.Transactions.Add(transaction);
             result = TransactionUpsertResult.Added;
         }
+
+        transaction.ExternalTransactionId = externalTransactionId;
 
         var amount = GetDecimal(plaidTransaction, "amount") ?? 0m;
         var merchantName = GetString(plaidTransaction, "merchant_name")
@@ -441,6 +459,43 @@ public class PlaidController : ControllerBase
         transaction.UpdatedAt = now;
 
         return result;
+    }
+
+    private async Task<Transaction?> FindPendingReplacementAsync(
+        Guid userId,
+        string? pendingTransactionId)
+    {
+        if (string.IsNullOrWhiteSpace(pendingTransactionId))
+        {
+            return null;
+        }
+
+        return await _context.Transactions
+            .FirstOrDefaultAsync(transaction =>
+                transaction.UserId == userId
+                && transaction.ExternalTransactionId == pendingTransactionId);
+    }
+
+    private async Task RemovePendingReplacementDuplicateAsync(
+        Guid userId,
+        string? pendingTransactionId,
+        Guid keepTransactionId)
+    {
+        if (string.IsNullOrWhiteSpace(pendingTransactionId))
+        {
+            return;
+        }
+
+        var duplicate = await _context.Transactions
+            .FirstOrDefaultAsync(transaction =>
+                transaction.UserId == userId
+                && transaction.Id != keepTransactionId
+                && transaction.ExternalTransactionId == pendingTransactionId);
+
+        if (duplicate != null)
+        {
+            _context.Transactions.Remove(duplicate);
+        }
     }
 
     private Guid GetCurrentUserId()

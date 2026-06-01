@@ -3,7 +3,8 @@ import {
   calculateExpensesByCategory,
   calculateMonthlyTotalsByCurrency,
   filterTransactionsClientSide,
-  groupAccountsByCurrency
+  groupAccountsByCurrency,
+  prepareTransactionsForDisplay
 } from "./calculations";
 import { formatCurrency } from "./format";
 
@@ -108,6 +109,56 @@ describe("frontend finance calculations", () => {
 
     expect(result["Food::CAD"].totalAmount).toBe(20);
     expect(result["Food::PEN"].totalAmount).toBe(30);
+  });
+
+  it("sorts transactions newest first and hides exact duplicate activity", () => {
+    const transactions = [
+      {
+        id: "older",
+        accountId: "checking",
+        merchantName: "Coffee",
+        description: "Coffee",
+        amount: 4.5,
+        currency: "CAD",
+        transactionType: "expense",
+        transactionDate: "2026-05-30",
+        createdAt: "2026-05-30T18:00:00Z",
+        updatedAt: "2026-05-30T18:00:00Z"
+      },
+      {
+        id: "posted-subway",
+        accountId: "checking",
+        merchantName: "Subway",
+        merchantNormalizedName: "subway",
+        description: "Subway",
+        amount: 18.63,
+        currency: "CAD",
+        transactionType: "expense",
+        transactionDate: "2026-06-01",
+        isPending: false,
+        createdAt: "2026-06-01T12:00:00Z",
+        updatedAt: "2026-06-01T12:10:00Z"
+      },
+      {
+        id: "duplicate-subway",
+        accountId: "checking",
+        merchantName: "Subway",
+        merchantNormalizedName: "subway",
+        description: "Subway",
+        amount: 18.63,
+        currency: "CAD",
+        transactionType: "expense",
+        transactionDate: "2026-06-01",
+        isPending: true,
+        createdAt: "2026-06-01T12:00:00Z",
+        updatedAt: "2026-06-01T12:00:00Z"
+      }
+    ];
+
+    expect(prepareTransactionsForDisplay(transactions).map((item) => item.id)).toEqual([
+      "posted-subway",
+      "older"
+    ]);
   });
 
   it("formats PEN without putting PEN at the front", () => {

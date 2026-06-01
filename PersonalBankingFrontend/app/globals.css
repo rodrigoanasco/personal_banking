@@ -586,6 +586,14 @@ input:disabled {
   padding: 14px;
 }
 
+.transaction-date-heading {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  padding: 4px 2px 0;
+  text-transform: uppercase;
+}
+
 .transaction-main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

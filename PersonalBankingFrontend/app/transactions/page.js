@@ -9,7 +9,10 @@ import {
   getTransactions,
   updateTransactionCategory
 } from "@/lib/api";
-import { filterTransactionsClientSide } from "@/lib/calculations";
+import {
+  filterTransactionsClientSide,
+  prepareTransactionsForDisplay
+} from "@/lib/calculations";
 import { ErrorBanner, LoadingBlock, SuccessBanner } from "@/components/Feedback";
 import { FilterPanel } from "@/components/FilterPanel";
 import { ManualTransactionForm } from "@/components/ManualTransactionForm";
@@ -72,7 +75,9 @@ export default function TransactionsPage() {
   }, [loadTransactions]);
 
   const filteredTransactions = useMemo(
-    () => filterTransactionsClientSide(transactions, filters),
+    () => prepareTransactionsForDisplay(
+      filterTransactionsClientSide(transactions, filters)
+    ),
     [transactions, filters]
   );
 

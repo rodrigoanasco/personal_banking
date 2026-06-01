@@ -121,3 +121,11 @@ C:\Users\Rodrigo\Desktop\Rodrigo\personal_projects\banking_tracker\PersonalBanki
 C:\Users\Rodrigo\Desktop\Rodrigo\personal_projects\banking_tracker\PersonalBankingApi\bin\Debug\net10.0\tr\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
 C:\Users\Rodrigo\Desktop\Rodrigo\personal_projects\banking_tracker\PersonalBankingApi\bin\Debug\net10.0\zh-Hans\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
 C:\Users\Rodrigo\Desktop\Rodrigo\personal_projects\banking_tracker\PersonalBankingApi\bin\Debug\net10.0\zh-Hant\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
+C:\Users\Rodrigo\AppData\Local\Temp\banking_tracker_api_build_verify\appsettings.Development.json
+C:\Users\Rodrigo\AppData\Local\Temp\banking_tracker_api_build_verify\appsettings.json
+C:\Users\Rodrigo\AppData\Local\Temp\banking_tracker_api_build_verify\PersonalBankingApi.staticwebassets.endpoints.json
+C:\Users\Rodrigo\AppData\Local\Temp\banking_tracker_api_build_verify\PersonalBankingApi.exe
+C:\Users\Rodrigo\AppData\Local\Temp\banking_tracker_api_build_verify\PersonalBankingApi.deps.json
+C:\Users\Rodrigo\AppData\Local\Temp\banking_tracker_api_build_verify\PersonalBankingApi.runtimeconfig.json
+C:\Users\Rodrigo\AppData\Local\Temp\banking_tracker_api_build_verify\PersonalBankingApi.dll
+C:\Users\Rodrigo\AppData\Local\Temp\banking_tracker_api_build_verify\PersonalBankingApi.pdb
