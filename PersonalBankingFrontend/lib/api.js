@@ -70,6 +70,13 @@ export function updateAccountBalance(accountId, payload) {
   });
 }
 
+export function updateAccountPlanning(accountId, payload) {
+  return apiRequest(`/api/accounts/${accountId}/planning`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
 export function getCategories() {
   return apiRequest("/api/categories");
 }

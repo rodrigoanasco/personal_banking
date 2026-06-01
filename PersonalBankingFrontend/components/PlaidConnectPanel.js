@@ -104,7 +104,7 @@ export function PlaidConnectPanel({ onSynced }) {
       <div className="panel-header">
         <div>
           <h2>Bank connection</h2>
-          <p>Sandbox Plaid connection for account and transaction sync</p>
+          <p>Plaid connection for account and transaction sync</p>
         </div>
       </div>
 

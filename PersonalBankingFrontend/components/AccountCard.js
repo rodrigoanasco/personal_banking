@@ -1,4 +1,5 @@
 import { Banknote, CreditCard } from "lucide-react";
+import { getAccountPlanningLabel } from "@/lib/accounts";
 import { formatCurrency } from "@/lib/format";
 import { StatusPill } from "./StatusPill";
 
@@ -7,6 +8,7 @@ export function AccountCard({ account, children }) {
     .toLowerCase()
     .includes("credit");
   const Icon = isCredit ? CreditCard : Banknote;
+  const planningLabel = getAccountPlanningLabel(account);
 
   return (
     <article className="account-card">
@@ -35,9 +37,9 @@ export function AccountCard({ account, children }) {
           </dd>
         </div>
         <div>
-          <dt>Available</dt>
+          <dt>{planningLabel}</dt>
           <dd>
-            {formatCurrency(account.availableBalance, account.currency, {
+            {formatCurrency(account.planningAmount, account.currency, {
               showSign: false
             })}
           </dd>

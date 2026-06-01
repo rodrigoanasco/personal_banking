@@ -40,8 +40,8 @@ export default function AccountsPage() {
     () => groupByCurrency(accounts, "currentBalance"),
     [accounts]
   );
-  const availableTotals = useMemo(
-    () => groupByCurrency(accounts, "availableBalance"),
+  const referenceTotals = useMemo(
+    () => groupByCurrency(accounts, "planningAmount"),
     [accounts]
   );
 
@@ -75,9 +75,9 @@ export default function AccountsPage() {
               </div>
             </div>
             <div className="summary-card info">
-              <div className="summary-label">Available balances</div>
+              <div className="summary-label">Reference amounts</div>
               <div className="summary-value">
-                <CurrencyAmountList totals={availableTotals} />
+                <CurrencyAmountList totals={referenceTotals} />
               </div>
             </div>
           </section>

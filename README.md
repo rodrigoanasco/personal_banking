@@ -1,557 +1,639 @@
 # Personal Banking Tracker
 
-Personal Banking Tracker is a full-stack personal finance app built to track, organize, categorize, and eventually sync real banking transactions from personal accounts.
+Personal Banking Tracker is a full-stack personal finance app for viewing account balances, syncing bank transactions, categorizing spending, and tracking simple account planning targets.
 
-The project started as a backend/API and PostgreSQL database exercise, then grew into a complete portfolio-style application with:
-- A protected ASP.NET Core Web API.
-- A PostgreSQL relational database.
-- Entity Framework Core models and LINQ-based queries.
-- A React + Next.js frontend.
-- Manual transaction and balance management.
-- Merchant-rule automation.
-- Login/password protection.
-- Plaid Sandbox integration for future bank/card linking.
+The app is built as a personal, local-first project:
+- ASP.NET Core Web API for backend logic.
+- PostgreSQL for relational storage.
+- Entity Framework Core with Npgsql for database access.
+- Next.js and React for the frontend.
+- Cookie-based login for local privacy.
+- Plaid Link for bank account and transaction sync.
+- Manual transaction and account management for anything Plaid does not cover.
 
-Current banks planned:
-- Scotiabank
-- BCP
+## Privacy Note
 
-## Project Purpose
+This repository should not contain real bank credentials, Plaid secrets, production access tokens, card numbers, exact personal balances, account identifiers, database dumps, or personal budget amounts.
 
-The goal is to build a personal banking dashboard that lets one owner see account balances, recent transactions, monthly income, monthly spending, category breakdowns, and uncategorized activity without opening pgAdmin or writing SQL.
+Use placeholders in documentation and examples. Store secrets locally with `.NET user-secrets`, environment variables, or another secret manager. Do not put secrets in frontend files, source code, README examples, screenshots, commits, or chat messages.
 
-The app is personal-only right now, not a public multi-user SaaS. It still uses a `users` table and login system so the financial data is protected and scoped to the signed-in user.
+## What The App Does
 
-This project is also intentionally aligned with the kinds of technologies requested in Microsoft-stack and React-oriented junior software roles:
-- C# and ASP.NET Core Web API.
-- Entity Framework Core.
-- LINQ queries.
-- PostgreSQL relational data modeling.
-- React and JavaScript.
-- Next.js frontend structure.
-- API integration.
-- Authentication, data scoping, and local secrets.
-- Reusable UI components.
-- Basic automated tests.
+The app helps one owner answer practical money questions:
+- What accounts do I have, grouped by currency?
+- What is my current balance in each account?
+- How much did I spend this month?
+- How much income came in this month?
+- Which transactions still need categories?
+- Which merchants should be categorized automatically next time?
+- Which accounts are synced from Plaid and which ones are manual?
+- What personal planning amount should I compare against each account?
 
-## High-Level Architecture
+It is not designed as a public multi-user SaaS. The schema has users and user-scoped rows, but the product assumption is still personal/local usage.
+
+## Architecture
 
 ```text
-React / Next.js frontend
-        |
-        | HTTP requests with auth cookie
-        v
+Next.js frontend
+  |
+  | fetch + HTTP-only auth cookie
+  v
 ASP.NET Core Web API
-        |
-        | Entity Framework Core + Npgsql
-        v
-PostgreSQL database
-        ^
-        |
-Plaid API integration for sandbox bank/card sync
+  |
+  | Entity Framework Core + Npgsql
+  v
+PostgreSQL
+  ^
+  |
+Plaid API for linked account and transaction sync
 ```
 
-The frontend never connects directly to PostgreSQL. It only calls the API. Sensitive values like Plaid secrets should be stored with .NET user-secrets or environment variables, not committed to the repository.
+The frontend never connects directly to PostgreSQL or Plaid. It only calls the backend API. The backend owns database access, Plaid credentials, auth, account import, and transaction sync.
 
-## What Is Already Built
+## Repository Structure
 
-User and security:
-- Login screen before the dashboard.
-- PBKDF2 password hashing.
-- HTTP-only cookie authentication.
-- Logout from the sidebar.
-- API protection for account, transaction, category, merchant rule, dashboard, and Plaid endpoints.
-- User-scoped queries so a signed-in user only sees their own records.
+```text
+PersonalBankingApi/
+  Controllers/       API endpoints
+  Data/              EF Core DbContext
+  DTOs/              Request DTOs
+  Models/            Table-mapped C# models
+  Services/          Password hashing and Plaid API service
+  Program.cs         API startup, auth, CORS, service registration
+
+PersonalBankingFrontend/
+  app/               Next.js pages and global CSS
+  components/        Reusable UI components
+  lib/               API client, formatting, account helpers, calculations
+  test/              Frontend test setup
+
+database/
+  *.sql              Incremental database setup scripts
+```
+
+## Tech Stack
+
+Backend:
+- C#
+- ASP.NET Core
+- Entity Framework Core
+- Npgsql PostgreSQL provider
+- Cookie authentication
+- PBKDF2 password hashing
+- Plaid API over `HttpClient`
+
+Frontend:
+- Next.js
+- React
+- JavaScript
+- Lucide React icons
+- React Plaid Link
+- Vitest
+
+Database:
+- PostgreSQL
+- pgAdmin or `psql` for local database administration
+
+## Current Features
+
+Authentication:
+- Login screen before app access.
+- HTTP-only cookie session.
+- Logout from the app shell.
+- Development-only password hash helper.
+- User-scoped account, transaction, category, merchant rule, dashboard, and Plaid queries.
 
 Dashboard:
-- Account balance cards grouped by currency.
-- Current-month spending.
+- Account balance summaries grouped by currency.
 - Current-month income.
-- Fixed credit-card limit display.
+- Current-month expenses.
+- Spending by category.
 - Recent transactions.
-- Spending-by-category summary.
-- Clean minimalist white/silver UI with a collapsible sidebar.
+
+Accounts:
+- Plaid and manual accounts in one view.
+- Accounts grouped by currency.
+- Current balance display.
+- Personal planning amount display.
+- Plaid connection panel.
+- Plaid sync button.
+- Manual balance editing for manual accounts.
+
+Planning Amounts:
+- Savings accounts show the planning amount as `Initial`.
+- Checking/chequing accounts show it as `Monthly limit`.
+- Credit accounts show it as `Credit limit`.
+- Other account types show it as `Reference`.
+- This value is separate from Plaid balances, so Plaid sync can update `current_balance` without overwriting your personal reference number.
 
 Transactions:
 - Full transaction list.
-- Filters by account, category, transaction type, and currency.
-- Client-side search by merchant, description, account, category, city, country, and notes.
+- Filter by account, category, type, and currency.
+- Client-side search.
 - Date range filtering.
 - Manual transaction creation.
-- Category editing from the list.
-- Option to remember a merchant while categorizing.
-- Apply merchant rules to uncategorized transactions.
-
-Accounts:
-- Account cards showing institution, account type, currency, status, current balance, and available balance.
-- Balance update form.
-- Plaid connect panel.
-- Plaid sync button.
+- Category updates.
+- Optional merchant rule creation while categorizing.
+- Apply saved merchant rules to uncategorized transactions.
 
 Categories:
-- Category overview.
+- Category list.
 - Active/inactive status.
 - Transaction usage count.
 
-Merchant rules:
-- View saved merchant-to-category rules.
-- Create new rules manually.
-- Create/update rules automatically while categorizing a transaction.
+Merchant Rules:
+- List saved merchant-to-category rules.
+- Create rules manually.
+- Create/update rules from a transaction categorization workflow.
+- Apply rules to uncategorized transactions.
 
 Plaid:
-- Sandbox Plaid Link token creation.
-- Public token exchange.
-- Plaid item storage.
-- Account import into the existing `accounts` table.
-- Transaction sync into the existing `transactions` table.
-- Sync cursor support through `plaid_items.transactions_cursor`.
+- Create Link tokens.
+- Open Plaid Link from the frontend.
+- Exchange public tokens on the backend.
+- Store Plaid Items locally.
+- Import Plaid accounts into `accounts`.
+- Sync transactions with `/transactions/sync`.
+- Store transaction sync cursors in `plaid_items.transactions_cursor`.
+- Support Sandbox, Development, and Production/Trial configuration through local secrets.
 
-## Current Status
+## Important Data Model Ideas
 
-The local app is ready for manual use and Plaid Sandbox testing.
+`accounts` stores both synced and manual accounts.
+- `provider = 'plaid'` means the row came from Plaid.
+- `provider = 'manual'` means the row was entered locally.
+- `provider_account_id` stores the Plaid account id for synced rows.
+- `current_balance` is the real/latest balance shown by the app.
+- `available_balance` is still stored when Plaid provides it, but it is no longer the main comparison number in the account card UI.
+- `planning_amount` is the user's own reference number, such as an initial savings amount or monthly checking limit.
 
-What is done:
-- Backend builds successfully.
-- Frontend builds successfully.
-- Frontend tests pass.
-- Login and protected API access are implemented.
-- Plaid integration is coded for Sandbox.
+`transactions` stores both Plaid transactions and manual transactions.
+- `external_transaction_id` identifies synced Plaid transactions.
+- `merchant_normalized_name` powers merchant rule matching.
+- `transaction_type` is normally `income` or `expense`.
+- Amounts are displayed by type and currency.
 
-What is still pending:
-- Plaid Production/Trial approval before linking real Scotiabank data.
-- Running the `plaid_items` SQL setup in the local database if it has not already been run.
-- Switching Plaid config from `sandbox` to `production` only after Plaid gives production access.
+`plaid_items` stores Plaid connections.
+- `access_token` is sensitive and must be treated like a secret.
+- `item_id` identifies the Plaid Item.
+- `transactions_cursor` allows incremental transaction sync.
 
-## Current Backend
+`merchant_rules` maps merchant names to categories.
 
-The project currently contains an ASP.NET Core API backed by PostgreSQL through Entity Framework Core.
+`categories` stores user categories.
 
-The API can:
-- Require login before exposing account, transaction, category, merchant rule, or dashboard data.
-- Read accounts.
-- Read categories.
-- Read transactions with account and optional category details.
-- Filter transactions by account, category, transaction type, and currency.
-- Read one transaction by ID.
-- Create manual/test transactions.
-- Manually update a transaction category.
-- Optionally create or update merchant rules while categorizing a transaction.
-- Apply merchant rules to uncategorized transactions.
-- Update account balances.
-- Return a dashboard summary for the frontend.
-- Create and list merchant rules that connect normalized merchant names to categories.
-- Create Plaid Link tokens.
-- Exchange Plaid public tokens.
-- Store Plaid items.
-- Sync Plaid accounts and transactions.
+`users` stores login identity and the password hash.
 
-Merchant rules are the start of the automatic categorization flow. The backend can now store rules, create or update a rule while manually categorizing a transaction, and apply matching rules to uncategorized transactions.
+## Database Scripts
 
-## Current Frontend
+Run these scripts against the local PostgreSQL database as needed:
 
-The project now also contains a React + Next.js frontend in `PersonalBankingFrontend`.
+```text
+database/2026-05-20-create-plaid-items.sql
+database/2026-06-01-add-account-planning-amount.sql
+```
 
-The frontend can:
-- Show a login screen before the dashboard.
-- Keep the session in an HTTP-only auth cookie.
-- Log out from the sidebar.
-- Show the main dashboard first.
-- Display account balances grouped by currency.
-- Display current-month income and expenses without mixing CAD and PEN.
-- Show recent transactions with readable account and category names.
-- Filter transactions by account, category, type, currency, search text, and date range.
-- Update transaction categories from the transaction list.
-- Save a merchant rule while categorizing a transaction.
-- Apply merchant rules to uncategorized transactions.
-- Add manual/test transactions.
-- Update account balances.
-- View categories and merchant rules.
-- Create new merchant rules.
-- Connect and sync Plaid Sandbox accounts from the Accounts page.
+The scripts are idempotent where practical. The first creates Plaid Item storage. The second adds `accounts.planning_amount`.
 
-The frontend only calls the ASP.NET Core API. It does not connect directly to PostgreSQL and does not contain database credentials.
+This project does not currently use a full EF migration history. The SQL files are the source of the incremental database changes that were added after the first local schema was created.
 
-## Local Login Setup
+## Local Prerequisites
 
-The API uses the existing `users` table. The `password_hash` column should contain a PBKDF2 hash generated by the backend.
+Install:
+- .NET SDK compatible with the project target framework.
+- Node.js and npm.
+- PostgreSQL.
+- Optional: pgAdmin.
+- Optional: Plaid developer account for Sandbox or real account linking.
 
-1. Start the backend:
-
-   ```bash
-   cd PersonalBankingApi
-   dotnet run
-   ```
-
-2. In another terminal, generate a password hash:
-
-   ```powershell
-   $body = @{
-     password = "Choose-A-Strong-Password-Here"
-   } | ConvertTo-Json
-
-   Invoke-RestMethod `
-     -Uri "http://localhost:5288/api/auth/hash-password" `
-     -Method Post `
-     -ContentType "application/json" `
-     -Body $body
-   ```
-
-   The response returns `passwordHash`. This helper endpoint only works in Development.
-
-3. Paste the returned hash into your existing user row:
-
-   ```sql
-   update users
-   set password_hash = 'PASTE_HASH_HERE',
-       updated_at = now()
-   where email = 'your-email@example.com';
-   ```
-
-4. Start the frontend and sign in using that email and password:
-
-   ```bash
-   cd PersonalBankingFrontend
-   npm run dev
-   ```
-
-   Then open:
-
-   ```text
-   http://localhost:3000
-   ```
-
-Do not store your plain password in SQL, the frontend, or documentation. Only store the generated password hash.
-
-## Plaid Sandbox Setup
-
-Plaid is used for bank/card linking. The app is wired for Sandbox first. Real Scotiabank/card linking requires Plaid Development or Production access; Sandbox uses fake test data.
-
-Do not commit Plaid credentials. Store them with .NET user-secrets:
+Restore dependencies:
 
 ```bash
 cd PersonalBankingApi
-dotnet user-secrets set "Plaid:ClientId" "YOUR_PLAID_CLIENT_ID"
-dotnet user-secrets set "Plaid:Secret" "YOUR_PLAID_SANDBOX_SECRET"
-dotnet user-secrets set "Plaid:Environment" "sandbox"
-dotnet user-secrets set "Plaid:ClientName" "Personal Banking Tracker"
+dotnet restore
 ```
 
-Create the local Plaid item table in pgAdmin before linking:
-
-```sql
-create table if not exists plaid_items (
-    id uuid primary key,
-    user_id uuid not null references users(id) on delete cascade,
-    item_id text not null,
-    access_token text not null,
-    institution_id text null,
-    institution_name text null,
-    transactions_cursor text null,
-    created_at timestamp without time zone not null,
-    updated_at timestamp without time zone not null
-);
-
-create unique index if not exists ix_plaid_items_user_item
-on plaid_items (user_id, item_id);
-
-create index if not exists ix_plaid_items_user_id
-on plaid_items (user_id);
+```bash
+cd PersonalBankingFrontend
+npm install
 ```
 
-Then start both apps, log in, open `Accounts`, and use `Connect with Plaid`.
+## Configuration
 
-Plaid test credentials for Sandbox Link are provided by Plaid in their Sandbox docs. Do not enter real Scotiabank credentials while the app is using Sandbox.
+### Backend Database
 
-## API Endpoints
+The API reads the PostgreSQL connection string from:
 
-### Auth
-
-```http
-POST /api/auth/login
-POST /api/auth/logout
-GET /api/auth/me
-POST /api/auth/hash-password
+```text
+ConnectionStrings:DefaultConnection
 ```
 
-`/api/auth/hash-password` is a local Development helper for creating a PBKDF2 password hash to paste into `users.password_hash`.
+For private local development, prefer user-secrets or a local ignored settings file instead of committing real database credentials.
 
-### Accounts
+Example with user-secrets:
 
-```http
-GET /api/accounts
+```powershell
+cd PersonalBankingApi
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=personal_banking_app;Username=YOUR_USER;Password=YOUR_PASSWORD"
 ```
 
-Returns accounts ordered by name.
+### Frontend API URL
 
-Update an account balance:
+The frontend reads:
 
-```http
-PUT /api/accounts/{id}/balance
-Content-Type: application/json
-
-{
-  "currentBalance": 1250.75,
-  "availableBalance": 1200.75
-}
+```text
+NEXT_PUBLIC_API_BASE_URL
 ```
 
-Updates `current_balance`, `available_balance`, `balance_last_updated_at`, and `updated_at`.
+Default:
 
-### Categories
-
-```http
-GET /api/categories
+```text
+http://localhost:5288
 ```
 
-Returns categories ordered by name.
+You can copy the example file if needed:
 
-### Transactions
-
-```http
-GET /api/transactions
+```bash
+cd PersonalBankingFrontend
+copy .env.example .env.local
 ```
 
-Returns transactions ordered by newest transaction date first. Each result includes transaction details, account information, and category information when a category is assigned.
+Do not put Plaid secrets or database credentials in frontend env files.
 
-Optional query filters:
-- `accountId`
-- `categoryId`
-- `type`
-- `currency`
+## Login Setup
 
-Example:
+The API uses a `users` table. Passwords should be stored only as PBKDF2 hashes.
 
-```http
-GET /api/transactions?currency=USD&type=expense
-```
-
-Get one transaction:
-
-```http
-GET /api/transactions/{id}
-```
-
-Returns one transaction with account and category names. Returns `404` when the transaction does not exist.
-
-Create a manual transaction:
-
-```http
-POST /api/transactions
-Content-Type: application/json
-
-{
-  "accountId": "00000000-0000-0000-0000-000000000000",
-  "categoryId": "00000000-0000-0000-0000-000000000000",
-  "merchantName": "Starbucks Coffee",
-  "merchantNormalizedName": "starbucks",
-  "description": "Coffee",
-  "amount": 6.75,
-  "currency": "CAD",
-  "transactionType": "expense",
-  "transactionDate": "2026-05-19",
-  "postedDate": "2026-05-20",
-  "city": "Vancouver",
-  "country": "CA",
-  "isPending": false,
-  "notes": "Manual test transaction"
-}
-```
-
-Required fields are `accountId`, `amount`, `currency`, `transactionType`, and `transactionDate`. The API validates that the account exists and, when provided, that the category exists. If `merchantNormalizedName` is omitted but `merchantName` is provided, the backend creates a simple lowercase normalized merchant name.
-
-Update a transaction category:
-
-```http
-PUT /api/transactions/{id}/category
-Content-Type: application/json
-
-{
-  "categoryId": "00000000-0000-0000-0000-000000000000",
-  "createMerchantRule": true
-}
-```
-
-Set `categoryId` to `null` to remove the category from a transaction. The API validates that the transaction exists and, when provided, that the category exists.
-
-When `createMerchantRule` is `true`, `categoryId` has a value, and the transaction has a normalized merchant name, the API creates or updates a matching `merchant_rules` row for the same user and merchant.
-
-Apply merchant rules to uncategorized transactions:
-
-```http
-POST /api/transactions/apply-merchant-rules
-```
-
-Matches uncategorized transactions against `merchant_rules` by `user_id` and `merchant_normalized_name`, updates matching transaction categories, and returns how many transactions were updated.
-
-### Merchant Rules
-
-```http
-GET /api/merchant-rules
-```
-
-Returns merchant rules joined with their category names, ordered by normalized merchant name.
-
-Create a merchant rule:
-
-```http
-POST /api/merchant-rules
-Content-Type: application/json
-
-{
-  "userId": "00000000-0000-0000-0000-000000000000",
-  "merchantName": "Starbucks Coffee",
-  "merchantNormalizedName": "starbucks",
-  "categoryId": "00000000-0000-0000-0000-000000000000",
-  "matchType": "exact"
-}
-```
-
-If `matchType` is blank, the API defaults it to `exact`. The API validates that the selected category exists before creating the rule.
-
-### Dashboard
-
-```http
-GET /api/dashboard/summary
-```
-
-Returns:
-- Account balances for display cards.
-- Account balances grouped by currency.
-- Current-month total expenses.
-- Current-month total income.
-- Current-month expenses by category.
-- Recent transactions, newest first.
-
-### Plaid
-
-```http
-POST /api/plaid/link-token
-POST /api/plaid/exchange-public-token
-POST /api/plaid/sync
-GET /api/plaid/items
-```
-
-These endpoints are protected by login. They are currently intended for Plaid Sandbox testing until Production access is approved.
-
-## Data Tables Currently Modeled
-
-- `users`
-- `accounts`
-- `categories`
-- `transactions`
-- `merchant_rules`
-- `plaid_items`
-
-The C# models map to these PostgreSQL tables using `[Table]` and `[Column]` attributes.
-
-## Current Setup Steps
-
-1. Create the PostgreSQL database and first tables using pgAdmin4.
-
-   pgAdmin4 is the database administration tool being used to visually create and manage the PostgreSQL database. PostgreSQL is the relational database engine where the banking tracker data is stored.
-
-2. Install the .NET SDK and work inside the API project.
-
-   This project targets `.NET 10` and uses ASP.NET Core for the backend API.
-
-3. Add or restore the Entity Framework Core packages for PostgreSQL.
-
-   From inside the API project folder:
-
-   ```bash
-   dotnet restore
-   ```
-
-   The project already references:
-
-   ```bash
-   dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
-   dotnet add package Microsoft.EntityFrameworkCore.Design
-   ```
-
-4. Configure the PostgreSQL connection string.
-
-   The API reads `DefaultConnection` from `PersonalBankingApi/appsettings.json`.
-
-   For local development, update the host, port, database name, username, and password to match your PostgreSQL setup. Avoid committing real shared credentials; use user secrets or local-only configuration before sharing the repo.
-
-5. Run the API.
-
-   From inside `PersonalBankingApi`:
-
-   ```bash
-   dotnet run
-   ```
-
-   In development, OpenAPI is mapped by the app and the controllers are available under `/api/...`.
-
-   The API also allows local frontend requests from `http://localhost:3000`, `https://localhost:3000`, `http://localhost:3001`, `https://localhost:3001`, `http://localhost:3002`, and `https://localhost:3002`.
-
-6. Keep generated files out of Git.
-
-   The `.gitignore` file excludes generated .NET folders like `bin/` and `obj/`, plus common local files such as IDE settings, logs, temporary files, environment variables, local secrets, database dumps, and possible frontend dependencies like `node_modules/`.
-
-   If build files were already tracked before adding `.gitignore`, they can be removed from Git tracking without deleting them from the computer:
-
-   ```bash
-   git rm -r --cached PersonalBankingApi/bin PersonalBankingApi/obj
-   ```
-
-## Run The App Locally
-
-Start the backend API:
+Start the backend:
 
 ```bash
 cd PersonalBankingApi
 dotnet run
 ```
 
-The API runs at:
+Generate a password hash in Development:
+
+```powershell
+$body = @{
+  password = "Choose-A-Strong-Password"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Uri "http://localhost:5288/api/auth/hash-password" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+Save the returned hash in the `users.password_hash` column for your local user:
+
+```sql
+update users
+set password_hash = 'PASTE_HASH_HERE',
+    updated_at = now()
+where email = 'your-email@example.com';
+```
+
+Do not store the plain password in SQL, source code, README files, screenshots, or notes.
+
+## Plaid Setup
+
+Plaid is used to link supported financial institutions and sync account/transaction data.
+
+Use Sandbox for fake test data:
+
+```powershell
+cd PersonalBankingApi
+dotnet user-secrets set "Plaid:ClientId" "YOUR_PLAID_CLIENT_ID"
+dotnet user-secrets set "Plaid:Secret" "YOUR_PLAID_SANDBOX_SECRET"
+dotnet user-secrets set "Plaid:Environment" "sandbox"
+dotnet user-secrets set "Plaid:ClientName" "Personal Banking Tracker"
+dotnet user-secrets set "Plaid:CountryCodes:0" "CA"
+dotnet user-secrets set "Plaid:TransactionsDaysRequested" "90"
+```
+
+Use Production when your Plaid account is approved for real-data access:
+
+```powershell
+cd PersonalBankingApi
+dotnet user-secrets set "Plaid:ClientId" "YOUR_PLAID_CLIENT_ID"
+dotnet user-secrets set "Plaid:Secret" "YOUR_PLAID_PRODUCTION_SECRET"
+dotnet user-secrets set "Plaid:Environment" "production"
+dotnet user-secrets set "Plaid:ClientName" "Personal Banking Tracker"
+dotnet user-secrets set "Plaid:CountryCodes:0" "CA"
+dotnet user-secrets set "Plaid:TransactionsDaysRequested" "90"
+```
+
+The app also accepts `trial` as a local alias and sends it to Plaid's Production base URL.
+
+Optional OAuth/webhook settings:
+
+```powershell
+dotnet user-secrets set "Plaid:RedirectUri" "https://your-domain.example/plaid-oauth"
+dotnet user-secrets set "Plaid:WebhookUrl" "https://your-domain.example/api/plaid/webhook"
+```
+
+Only configure real redirect or webhook URLs that you own. For ordinary local desktop testing, the app can usually use Plaid Link without adding these.
+
+### Plaid Safety Notes
+
+Plaid Link may ask for online banking credentials depending on the institution. That is different from a card PIN or CVV.
+
+Do not continue if a flow asks for:
+- Card PIN.
+- CVV/security code.
+- A Plaid secret.
+- A database password.
+- Anything unrelated to online banking authentication.
+
+Do not paste Plaid secrets or banking credentials into this repository.
+
+## Running Locally
+
+Start the backend:
+
+```bash
+cd PersonalBankingApi
+dotnet run
+```
+
+Backend URL:
 
 ```text
 http://localhost:5288
 ```
 
-Start the frontend in a second terminal:
+Start the frontend in another terminal:
 
 ```bash
 cd PersonalBankingFrontend
-npm install
 npm run dev
 ```
 
-The frontend runs at:
+Frontend URL:
 
 ```text
 http://localhost:3000
 ```
 
-The frontend API base URL is configured through:
+Health check:
 
-```text
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5288
+```powershell
+Invoke-RestMethod http://localhost:5288/health
 ```
 
-You can copy `PersonalBankingFrontend/.env.example` to `PersonalBankingFrontend/.env.local` if the API URL changes.
+## Typical Workflow
 
-Useful frontend commands:
+1. Start PostgreSQL.
+2. Start the API.
+3. Start the frontend.
+4. Log in.
+5. Open Accounts.
+6. Link a supported institution with Plaid or use manual accounts.
+7. Sync Plaid data.
+8. Review imported accounts.
+9. Set planning amounts such as `Initial` or `Monthly limit`.
+10. Open Transactions.
+11. Categorize transactions.
+12. Save merchant rules for repeated merchants.
+13. Apply merchant rules to uncategorized transactions.
+14. Use the Dashboard for monthly summaries.
+
+## API Endpoints
+
+Auth:
+
+```http
+POST /api/auth/login
+POST /api/auth/logout
+GET  /api/auth/me
+POST /api/auth/hash-password
+```
+
+Accounts:
+
+```http
+GET /api/accounts
+PUT /api/accounts/{id}/balance
+PUT /api/accounts/{id}/planning
+```
+
+`PUT /api/accounts/{id}/balance` updates manual balance values:
+
+```json
+{
+  "currentBalance": 1000.00,
+  "availableBalance": 1000.00
+}
+```
+
+`PUT /api/accounts/{id}/planning` updates the user-owned reference amount:
+
+```json
+{
+  "planningAmount": 1500.00
+}
+```
+
+Categories:
+
+```http
+GET /api/categories
+```
+
+Transactions:
+
+```http
+GET  /api/transactions
+GET  /api/transactions/{id}
+POST /api/transactions
+PUT  /api/transactions/{id}/category
+POST /api/transactions/apply-merchant-rules
+```
+
+Transaction filters:
+
+```text
+accountId
+categoryId
+type
+currency
+```
+
+Merchant Rules:
+
+```http
+GET  /api/merchant-rules
+POST /api/merchant-rules
+```
+
+Dashboard:
+
+```http
+GET /api/dashboard/summary
+```
+
+Plaid:
+
+```http
+POST /api/plaid/link-token
+POST /api/plaid/exchange-public-token
+POST /api/plaid/sync
+GET  /api/plaid/items
+```
+
+All app endpoints are protected by auth except the root health/info endpoints and the Development-only password hash helper.
+
+## Frontend Pages
+
+```text
+/                  Dashboard
+/accounts          Accounts, Plaid Link, sync, planning amounts
+/transactions      Transaction list, filters, categorization, manual entry
+/categories        Category overview
+/merchant-rules    Merchant rule management
+```
+
+## Testing And Build
+
+Backend:
 
 ```bash
-npm run test
+cd PersonalBankingApi
+dotnet build
+```
+
+Frontend tests:
+
+```bash
+cd PersonalBankingFrontend
+npm test
+```
+
+Frontend production build:
+
+```bash
+cd PersonalBankingFrontend
 npm run build
 ```
 
-## Why These Technologies Work Together
+## Troubleshooting
 
-- **PostgreSQL** stores structured banking data such as accounts, transactions, categories, merchant rules, and balances.
-- **pgAdmin4** provides a visual interface to create, inspect, and manage the PostgreSQL database while the database structure is still being planned.
-- **.NET / ASP.NET Core** runs the backend API.
-- **React + Next.js** runs the frontend dashboard and transaction management UI.
-- **JavaScript** is used for the frontend application code.
-- **Entity Framework Core** lets the .NET code work with database tables using C# classes instead of writing raw SQL for every operation.
-- **Npgsql.EntityFrameworkCore.PostgreSQL** allows EF Core to communicate with PostgreSQL.
-- **Microsoft.EntityFrameworkCore.Design** adds EF Core design-time tooling, such as migrations and database scaffolding.
-- **Plaid** provides the bank-linking path for account and transaction sync.
-- **Git** tracks the project history, while **`.gitignore`** keeps generated files, local settings, and sensitive configuration out of the repository.
+### Port already in use
 
-In short: PostgreSQL stores the data, pgAdmin4 helps manage it visually, ASP.NET Core exposes the API, EF Core maps C# code to database tables, Npgsql connects EF Core to PostgreSQL, React/Next.js provides the user interface, Plaid prepares the app for real account syncing, and merchant rules power automatic transaction categorization.
+If the backend port is already taken:
+
+```powershell
+Get-NetTCPConnection -LocalPort 5288 -ErrorAction SilentlyContinue
+```
+
+Stop the process if it is an old local API instance:
+
+```powershell
+Stop-Process -Id PROCESS_ID
+```
+
+If the frontend port is already taken:
+
+```powershell
+Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue
+```
+
+Then stop the old Node process if needed:
+
+```powershell
+Stop-Process -Id PROCESS_ID
+```
+
+### Plaid credentials missing
+
+If the UI says Plaid is not configured, confirm local user-secrets are present:
+
+```powershell
+cd PersonalBankingApi
+dotnet user-secrets list
+```
+
+The command should show Plaid keys by name. Do not share the values.
+
+### Duplicate accounts after linking
+
+If manual test accounts already existed before Plaid sync, the Accounts page may show both manual rows and Plaid rows. Plaid rows have `provider = 'plaid'`. Manual rows have `provider = 'manual'`.
+
+Only delete manual rows after checking they have no transactions:
+
+```sql
+select a.id, a.name, a.provider, count(t.id) as transaction_count
+from accounts a
+left join transactions t on t.account_id = a.id
+group by a.id
+order by a.name;
+```
+
+### Plaid sync imports accounts but no transactions
+
+Check:
+- The Plaid Item exists in `plaid_items`.
+- `transactions_cursor` is not null after sync.
+- The linked institution supports transactions for the selected account.
+- The transaction date range requested is enough for the expected history.
+- The account was selected in Plaid Link.
+
+### Frontend still shows old UI
+
+Hard refresh the browser:
+
+```text
+Ctrl + F5
+```
+
+If needed, restart `npm run dev`.
+
+## Git Hygiene
+
+The `.gitignore` excludes generated build output such as `bin/`, `obj/`, `node_modules/`, and `.next/`.
+
+If generated .NET files were already tracked before `.gitignore` was added, remove them from Git tracking without deleting local files:
+
+```bash
+git rm -r --cached PersonalBankingApi/bin PersonalBankingApi/obj
+```
+
+Do not commit:
+- Plaid secrets.
+- Database passwords.
+- Real account balances.
+- Screenshots showing real financial data.
+- Database backups or dumps.
+- User-secrets files.
+- `.env.local`.
+
+## Development Notes
+
+Plaid sync currently runs from explicit frontend actions:
+- Connect with Plaid.
+- Sync now.
+
+There is no background worker yet. That is a reasonable future improvement if the app becomes long-running.
+
+The app currently stores Plaid access tokens in the local database. That is acceptable for a local portfolio/personal project, but a production-grade version should encrypt tokens at rest and use stricter deployment secrets management.
+
+The database change process is currently SQL-script based, not full EF migrations. Converting to EF migrations would make fresh setup easier.
+
+## Possible Next Improvements
+
+- Encrypt Plaid access tokens at rest.
+- Add database migrations for the full schema.
+- Add import/export backup tooling that redacts secrets.
+- Add Plaid Item removal and relink flows.
+- Add better categorization suggestions.
+- Add budget/planning dashboards based on `planning_amount`.
+- Add recurring bill detection.
+- Add tests around Plaid transaction mapping.
+- Add server-side pagination for large transaction history.
+
+## Summary
+
+This app is a personal banking dashboard with a protected ASP.NET Core API, a PostgreSQL database, a Next.js frontend, Plaid sync, manual financial data entry, transaction categorization, and lightweight planning values per account.
+
+The most important safety rule is simple: code can describe the system, but real credentials and financial details stay local and private.

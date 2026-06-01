@@ -743,6 +743,10 @@ textarea {
   margin-top: 16px;
 }
 
+.inline-editor.single-field {
+  grid-template-columns: minmax(180px, 1fr) auto;
+}
+
 .inline-error {
   grid-column: 1 / -1;
   margin: 2px 0 0;
@@ -936,6 +940,10 @@ textarea {
   .transaction-main,
   .transaction-editor,
   .inline-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .inline-editor.single-field {
     grid-template-columns: 1fr;
   }
 

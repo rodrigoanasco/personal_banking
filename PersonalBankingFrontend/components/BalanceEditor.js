@@ -2,17 +2,26 @@
 
 import { useState } from "react";
 import { Save } from "lucide-react";
-import { updateAccountBalance } from "@/lib/api";
+import {
+  updateAccountBalance,
+  updateAccountPlanning
+} from "@/lib/api";
+import {
+  getAccountPlanningLabel,
+  isPlaidAccount
+} from "@/lib/accounts";
 
 export function BalanceEditor({ account, onUpdated }) {
   const [currentBalance, setCurrentBalance] = useState(
     account.currentBalance ?? ""
   );
-  const [availableBalance, setAvailableBalance] = useState(
-    account.availableBalance ?? ""
+  const [planningAmount, setPlanningAmount] = useState(
+    account.planningAmount ?? ""
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const isSynced = isPlaidAccount(account);
+  const planningLabel = getAccountPlanningLabel(account);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -20,10 +29,17 @@ export function BalanceEditor({ account, onUpdated }) {
     setError("");
 
     try {
-      await updateAccountBalance(account.id, {
-        currentBalance: currentBalance === "" ? null : Number(currentBalance),
-        availableBalance: availableBalance === "" ? null : Number(availableBalance)
+      if (!isSynced) {
+        await updateAccountBalance(account.id, {
+          currentBalance: currentBalance === "" ? null : Number(currentBalance),
+          availableBalance: currentBalance === "" ? null : Number(currentBalance)
+        });
+      }
+
+      await updateAccountPlanning(account.id, {
+        planningAmount: planningAmount === "" ? null : Number(planningAmount)
       });
+
       await onUpdated?.();
     } catch (requestError) {
       setError(requestError.message);
@@ -33,23 +49,28 @@ export function BalanceEditor({ account, onUpdated }) {
   }
 
   return (
-    <form className="inline-editor" onSubmit={handleSubmit}>
+    <form
+      className={`inline-editor${isSynced ? " single-field" : ""}`}
+      onSubmit={handleSubmit}
+    >
+      {!isSynced ? (
+        <label>
+          <span>Current</span>
+          <input
+            type="number"
+            step="0.01"
+            value={currentBalance}
+            onChange={(event) => setCurrentBalance(event.target.value)}
+          />
+        </label>
+      ) : null}
       <label>
-        <span>Current</span>
+        <span>{planningLabel}</span>
         <input
           type="number"
           step="0.01"
-          value={currentBalance}
-          onChange={(event) => setCurrentBalance(event.target.value)}
-        />
-      </label>
-      <label>
-        <span>Available</span>
-        <input
-          type="number"
-          step="0.01"
-          value={availableBalance}
-          onChange={(event) => setAvailableBalance(event.target.value)}
+          value={planningAmount}
+          onChange={(event) => setPlanningAmount(event.target.value)}
         />
       </label>
       <button
