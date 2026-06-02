@@ -52,6 +52,12 @@ public static class TransactionResponseService
                     UpdatedAt = result.transaction.UpdatedAt,
                     AccountId = result.account.Id,
                     AccountName = result.account.Name,
+                    AccountInstitutionName = result.account.InstitutionName,
+                    AccountType = result.account.AccountType,
+                    AccountSubtype = result.account.AccountSubtype,
+                    AccountLastFour = result.account.LastFour,
+                    AccountCountry = result.account.Country,
+                    AccountProvider = result.account.Provider,
                     CategoryId = category != null ? category.Id : null,
                     CategoryName = category != null ? category.Name : null
                 }
@@ -117,7 +123,7 @@ public static class TransactionResponseService
 
         return string.Join(
             "|",
-            transaction.AccountId,
+            AccountDisplayService.GetDuplicateKey(transaction),
             activityDate,
             merchantKey,
             descriptionKey,

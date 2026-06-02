@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PersonalBankingApi.Data;
 using PersonalBankingApi.DTOs;
 using PersonalBankingApi.Models;
+using PersonalBankingApi.Services;
 
 namespace PersonalBankingApi.Controllers;
 
@@ -27,7 +28,7 @@ public class AccountsController : ControllerBase
             .OrderBy(account => account.Name)
             .ToListAsync();
 
-        return Ok(accounts);
+        return Ok(AccountDisplayService.PrepareForDisplay(accounts));
     }
 
     [HttpPut("{id}/balance")]

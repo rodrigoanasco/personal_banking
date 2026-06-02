@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import {
   filterTransactionsClientSide,
+  prepareAccountsForDisplay,
   prepareTransactionsForDisplay
 } from "@/lib/calculations";
 import { ErrorBanner, LoadingBlock, SuccessBanner } from "@/components/Feedback";
@@ -51,7 +52,7 @@ export default function TransactionsPage() {
         getTransactions(filters)
       ]);
 
-      setAccounts(accountData);
+      setAccounts(prepareAccountsForDisplay(accountData));
       setCategories(categoryData);
       setTransactions(transactionData);
       setCategorySelections(

@@ -25,8 +25,13 @@ public class DashboardController : ControllerBase
         var monthStart = new DateOnly(today.Year, today.Month, 1);
         var nextMonthStart = monthStart.AddMonths(1);
 
-        var accountBalances = await _context.Accounts
+        var displayAccounts = AccountDisplayService.PrepareForDisplay(
+            await _context.Accounts
             .Where(account => account.UserId == userId)
+            .ToListAsync()
+        );
+
+        var accountBalances = displayAccounts
             .OrderBy(account => account.Name)
             .Select(account => new
             {
@@ -42,10 +47,9 @@ public class DashboardController : ControllerBase
                 account.BalanceLastUpdatedAt,
                 account.IsActive
             })
-            .ToListAsync();
+            .ToList();
 
-        var balancesByCurrency = await _context.Accounts
-            .Where(account => account.UserId == userId)
+        var balancesByCurrency = displayAccounts
             .GroupBy(account => account.Currency)
             .Select(group => new
             {
@@ -55,7 +59,7 @@ public class DashboardController : ControllerBase
                 AccountCount = group.Count()
             })
             .OrderBy(balance => balance.Currency)
-            .ToListAsync();
+            .ToList();
 
         var preparedTransactions = await TransactionResponseService.ToPreparedListAsync(
             TransactionResponseService.BuildQuery(

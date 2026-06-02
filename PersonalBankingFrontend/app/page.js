@@ -12,6 +12,8 @@ import { getDashboardSummary, getTransactions } from "@/lib/api";
 import {
   calculateExpensesByCategory,
   calculateMonthlyTotalsByCurrency,
+  groupByCurrency,
+  prepareAccountsForDisplay,
   prepareTransactionsForDisplay,
   toSortedCategoryTotals
 } from "@/lib/calculations";
@@ -85,6 +87,16 @@ export default function DashboardPage() {
     [transactions]
   );
 
+  const displayAccountBalances = useMemo(
+    () => prepareAccountsForDisplay(summary?.accountBalances || []),
+    [summary?.accountBalances]
+  );
+
+  const availableBalances = useMemo(
+    () => groupByCurrency(displayAccountBalances, "availableBalance"),
+    [displayAccountBalances]
+  );
+
   const recentTransactions = useMemo(
     () =>
       prepareTransactionsForDisplay(
@@ -116,8 +128,8 @@ export default function DashboardPage() {
           <section className="summary-grid" aria-label="Financial summary">
             <SummaryCard icon={WalletCards} label="Available money" tone="success">
               <CurrencyAmountList
-                totals={summary?.balancesByCurrency || []}
-                valueKey="availableBalance"
+                totals={availableBalances}
+                emptyLabel="No available balances"
               />
             </SummaryCard>
             <SummaryCard icon={TrendingDown} label="Monthly spending" tone="warning">
@@ -173,7 +185,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className="account-grid">
-                  {(summary?.accountBalances || []).slice(0, 3).map((account) => (
+                  {displayAccountBalances.slice(0, 3).map((account) => (
                     <AccountCard key={account.id} account={account} />
                   ))}
                 </div>

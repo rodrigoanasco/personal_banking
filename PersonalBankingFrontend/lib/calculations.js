@@ -18,6 +18,39 @@ export function groupAccountsByCurrency(accounts) {
   }, {});
 }
 
+export function prepareAccountsForDisplay(accounts) {
+  return deduplicateAccounts(accounts || []).sort((first, second) => {
+    const currencyComparison = compareAscending(first.currency, second.currency);
+
+    if (currencyComparison !== 0) {
+      return currencyComparison;
+    }
+
+    const nameComparison = compareAscending(first.name, second.name);
+
+    if (nameComparison !== 0) {
+      return nameComparison;
+    }
+
+    return compareAscending(first.id, second.id);
+  });
+}
+
+export function deduplicateAccounts(accounts) {
+  const accountsByKey = new Map();
+
+  for (const account of accounts) {
+    const key = getDuplicateAccountKey(account);
+    const current = accountsByKey.get(key);
+
+    if (!current || isPreferredAccount(account, current)) {
+      accountsByKey.set(key, account);
+    }
+  }
+
+  return Array.from(accountsByKey.values());
+}
+
 export function calculateMonthlyTotalsByCurrency(transactions, date = new Date()) {
   const year = date.getFullYear();
   const month = date.getMonth() + 1;
@@ -228,6 +261,7 @@ function isPreferredTransaction(candidate, current) {
 }
 
 function getDuplicateTransactionKey(transaction) {
+  const accountKey = getDuplicateTransactionAccountKey(transaction);
   const merchantKey = normalizeKey(
     transaction.merchantNormalizedName ||
       transaction.merchantName ||
@@ -239,13 +273,95 @@ function getDuplicateTransactionKey(transaction) {
   const activityDate = transaction.postedDate || transaction.transactionDate || "";
 
   return [
-    transaction.accountId || "",
+    accountKey,
     activityDate,
     merchantKey,
     descriptionKey,
     amountKey,
     normalizeKey(transaction.currency),
     normalizeKey(transaction.transactionType)
+  ].join("|");
+}
+
+function isPreferredAccount(candidate, current) {
+  const planningComparison =
+    Number(hasUsefulPlanningAmount(candidate)) - Number(hasUsefulPlanningAmount(current));
+
+  if (planningComparison !== 0) {
+    return planningComparison > 0;
+  }
+
+  const activeComparison = Number(Boolean(candidate.isActive)) - Number(Boolean(current.isActive));
+
+  if (activeComparison !== 0) {
+    return activeComparison > 0;
+  }
+
+  const balanceComparison = compareDescending(
+    candidate.balanceLastUpdatedAt,
+    current.balanceLastUpdatedAt
+  );
+
+  if (balanceComparison !== 0) {
+    return balanceComparison < 0;
+  }
+
+  const updatedComparison = compareDescending(candidate.updatedAt, current.updatedAt);
+
+  if (updatedComparison !== 0) {
+    return updatedComparison < 0;
+  }
+
+  const createdComparison = compareDescending(candidate.createdAt, current.createdAt);
+
+  if (createdComparison !== 0) {
+    return createdComparison < 0;
+  }
+
+  return compareAscending(candidate.id, current.id) < 0;
+}
+
+function hasUsefulPlanningAmount(account) {
+  return Number(account?.planningAmount || 0) !== 0;
+}
+
+function getDuplicateTransactionAccountKey(transaction) {
+  const provider = normalizeKey(transaction.accountProvider);
+
+  if (provider && provider !== "plaid") {
+    return transaction.accountId || "";
+  }
+
+  return [
+    "account",
+    provider || "unknown",
+    normalizeKey(transaction.accountInstitutionName),
+    normalizeKey(transaction.accountName),
+    normalizeKey(transaction.accountType),
+    normalizeKey(transaction.accountSubtype),
+    normalizeKey(transaction.currency),
+    normalizeKey(transaction.accountCountry),
+    normalizeKey(transaction.accountLastFour)
+  ].join("|");
+}
+
+function getDuplicateAccountKey(account) {
+  const provider = normalizeKey(account.provider);
+
+  if (provider && provider !== "plaid") {
+    return account.id || "";
+  }
+
+  return [
+    "account",
+    provider || "unknown",
+    normalizeKey(account.institutionName),
+    normalizeKey(account.name),
+    normalizeKey(account.accountType),
+    normalizeKey(account.accountSubtype),
+    normalizeKey(account.currency),
+    normalizeKey(account.country),
+    normalizeKey(account.lastFour)
   ].join("|");
 }
 

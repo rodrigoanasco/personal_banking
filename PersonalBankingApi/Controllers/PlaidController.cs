@@ -232,6 +232,11 @@ public class PlaidController : ControllerBase
         var userId = GetCurrentUserId();
         var accounts = await _plaidService.GetAccountsAsync(plaidItem.AccessToken);
         var now = DateTime.UtcNow;
+        var existingPlaidAccounts = await _context.Accounts
+            .Where(account =>
+                account.UserId == userId
+                && account.Provider == "plaid")
+            .ToListAsync();
         var updatedCount = 0;
 
         foreach (var plaidAccount in accounts.EnumerateArray())
@@ -243,16 +248,35 @@ public class PlaidController : ControllerBase
                 continue;
             }
 
-            var account = await _context.Accounts
-                .FirstOrDefaultAsync(account =>
-                    account.UserId == userId
-                    && account.Provider == "plaid"
-                    && account.ProviderAccountId == providerAccountId);
-
             var balances = plaidAccount.GetProperty("balances");
             var currency = GetString(balances, "iso_currency_code")
                 ?? GetString(balances, "unofficial_currency_code")
                 ?? "CAD";
+            var incomingAccount = new Account
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Provider = "plaid",
+                ProviderAccountId = providerAccountId,
+                Name = GetString(plaidAccount, "name") ?? "Plaid account",
+                InstitutionName = plaidItem.InstitutionName ?? "Plaid",
+                AccountType = GetString(plaidAccount, "type") ?? "unknown",
+                AccountSubtype = GetString(plaidAccount, "subtype"),
+                Currency = currency,
+                LastFour = GetLastFour(GetString(plaidAccount, "mask")),
+                Country = currency == "PEN" ? "PE" : "CA",
+                IsActive = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var matchingAccounts = existingPlaidAccounts
+                .Where(account =>
+                    account.ProviderAccountId == providerAccountId
+                    || AccountDisplayService.AreDuplicates(account, incomingAccount))
+                .ToList();
+            var account = matchingAccounts.Count > 0
+                ? AccountDisplayService.ChoosePreferredAccount(matchingAccounts)
+                : null;
 
             if (account == null)
             {
@@ -261,24 +285,26 @@ public class PlaidController : ControllerBase
                     Id = Guid.NewGuid(),
                     UserId = userId,
                     Provider = "plaid",
-                    ProviderAccountId = providerAccountId,
                     CreatedAt = now,
                     IsActive = true
                 };
 
                 _context.Accounts.Add(account);
+                existingPlaidAccounts.Add(account);
             }
 
-            account.Name = GetString(plaidAccount, "name") ?? "Plaid account";
-            account.InstitutionName = plaidItem.InstitutionName ?? "Plaid";
-            account.AccountType = GetString(plaidAccount, "type") ?? "unknown";
-            account.AccountSubtype = GetString(plaidAccount, "subtype");
-            account.Currency = currency;
-            account.LastFour = GetLastFour(GetString(plaidAccount, "mask"));
-            account.Country = currency == "PEN" ? "PE" : "CA";
+            account.ProviderAccountId = providerAccountId;
+            account.Name = incomingAccount.Name;
+            account.InstitutionName = incomingAccount.InstitutionName;
+            account.AccountType = incomingAccount.AccountType;
+            account.AccountSubtype = incomingAccount.AccountSubtype;
+            account.Currency = incomingAccount.Currency;
+            account.LastFour = incomingAccount.LastFour;
+            account.Country = incomingAccount.Country;
             account.CurrentBalance = GetDecimal(balances, "current");
             account.AvailableBalance = GetDecimal(balances, "available");
             account.BalanceLastUpdatedAt = now;
+            account.IsActive = true;
             account.UpdatedAt = now;
             updatedCount++;
         }
@@ -386,11 +412,7 @@ public class PlaidController : ControllerBase
             return TransactionUpsertResult.Skipped;
         }
 
-        var account = await _context.Accounts
-            .FirstOrDefaultAsync(account =>
-                account.UserId == userId
-                && account.Provider == "plaid"
-                && account.ProviderAccountId == providerAccountId);
+        var account = await FindSyncedPlaidAccountAsync(userId, providerAccountId);
 
         if (account == null)
         {
@@ -459,6 +481,22 @@ public class PlaidController : ControllerBase
         transaction.UpdatedAt = now;
 
         return result;
+    }
+
+    private async Task<Account?> FindSyncedPlaidAccountAsync(
+        Guid userId,
+        string providerAccountId)
+    {
+        var accounts = await _context.Accounts
+            .Where(account =>
+                account.UserId == userId
+                && account.Provider == "plaid"
+                && account.ProviderAccountId == providerAccountId)
+            .ToListAsync();
+
+        return accounts.Count > 0
+            ? AccountDisplayService.ChoosePreferredAccount(accounts)
+            : null;
     }
 
     private async Task<Transaction?> FindPendingReplacementAsync(

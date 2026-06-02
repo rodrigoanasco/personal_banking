@@ -32,7 +32,13 @@ public class TransactionsController : ControllerBase
 
         if (accountId.HasValue)
         {
-            query = query.Where(transaction => transaction.AccountId == accountId.Value);
+            var matchingAccountIds = await GetMatchingDisplayAccountIdsAsync(
+                userId,
+                accountId.Value
+            );
+
+            query = query.Where(transaction =>
+                matchingAccountIds.Contains(transaction.AccountId));
         }
 
         if (categoryId.HasValue)
@@ -346,5 +352,27 @@ public class TransactionsController : ControllerBase
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.Parse(userId!);
+    }
+
+    private async Task<List<Guid>> GetMatchingDisplayAccountIdsAsync(
+        Guid userId,
+        Guid accountId)
+    {
+        var accounts = await _context.Accounts
+            .Where(account => account.UserId == userId)
+            .ToListAsync();
+        var selectedAccount = accounts.FirstOrDefault(account => account.Id == accountId);
+
+        if (selectedAccount == null)
+        {
+            return new List<Guid> { accountId };
+        }
+
+        var selectedKey = AccountDisplayService.GetDuplicateKey(selectedAccount);
+
+        return accounts
+            .Where(account => AccountDisplayService.GetDuplicateKey(account) == selectedKey)
+            .Select(account => account.Id)
+            .ToList();
     }
 }

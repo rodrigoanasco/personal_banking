@@ -4,6 +4,7 @@ import {
   calculateMonthlyTotalsByCurrency,
   filterTransactionsClientSide,
   groupAccountsByCurrency,
+  prepareAccountsForDisplay,
   prepareTransactionsForDisplay
 } from "./calculations";
 import { formatCurrency } from "./format";
@@ -54,6 +55,39 @@ describe("frontend finance calculations", () => {
 
     expect(grouped.CAD).toHaveLength(2);
     expect(grouped.PEN).toHaveLength(1);
+  });
+
+  it("keeps the preferred Plaid account when duplicate feeds return the same account", () => {
+    const accounts = [
+      {
+        id: "without-planning",
+        provider: "plaid",
+        name: "Preferred Package",
+        institutionName: "Scotiabank",
+        accountType: "depository",
+        accountSubtype: "checking",
+        currency: "CAD",
+        country: "CA",
+        currentBalance: 218.92,
+        planningAmount: 0,
+        isActive: true
+      },
+      {
+        id: "with-planning",
+        provider: "plaid",
+        name: "Preferred Package",
+        institutionName: "Scotiabank",
+        accountType: "depository",
+        accountSubtype: "checking",
+        currency: "CAD",
+        country: "CA",
+        currentBalance: 218.92,
+        planningAmount: 1885,
+        isActive: true
+      }
+    ];
+
+    expect(prepareAccountsForDisplay(accounts)).toEqual([accounts[1]]);
   });
 
   it("filters transactions by search text and date range", () => {
@@ -128,6 +162,7 @@ describe("frontend finance calculations", () => {
       {
         id: "posted-subway",
         accountId: "checking",
+        accountName: "Preferred Package",
         merchantName: "Subway",
         merchantNormalizedName: "subway",
         description: "Subway",
@@ -141,7 +176,8 @@ describe("frontend finance calculations", () => {
       },
       {
         id: "duplicate-subway",
-        accountId: "checking",
+        accountId: "duplicate-checking",
+        accountName: "Preferred Package",
         merchantName: "Subway",
         merchantNormalizedName: "subway",
         description: "Subway",

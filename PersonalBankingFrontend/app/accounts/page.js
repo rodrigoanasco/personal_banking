@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { getAccounts } from "@/lib/api";
-import { groupAccountsByCurrency, groupByCurrency } from "@/lib/calculations";
+import {
+  groupAccountsByCurrency,
+  groupByCurrency,
+  prepareAccountsForDisplay
+} from "@/lib/calculations";
 import { AccountCard } from "@/components/AccountCard";
 import { BalanceEditor } from "@/components/BalanceEditor";
 import { CurrencyAmountList } from "@/components/CurrencyAmountList";
@@ -32,17 +36,21 @@ export default function AccountsPage() {
     loadAccounts();
   }, [loadAccounts]);
 
-  const accountsByCurrency = useMemo(
-    () => groupAccountsByCurrency(accounts),
+  const displayAccounts = useMemo(
+    () => prepareAccountsForDisplay(accounts),
     [accounts]
+  );
+  const accountsByCurrency = useMemo(
+    () => groupAccountsByCurrency(displayAccounts),
+    [displayAccounts]
   );
   const currentTotals = useMemo(
-    () => groupByCurrency(accounts, "currentBalance"),
-    [accounts]
+    () => groupByCurrency(displayAccounts, "currentBalance"),
+    [displayAccounts]
   );
   const referenceTotals = useMemo(
-    () => groupByCurrency(accounts, "planningAmount"),
-    [accounts]
+    () => groupByCurrency(displayAccounts, "planningAmount"),
+    [displayAccounts]
   );
 
   return (

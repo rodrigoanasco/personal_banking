@@ -20,6 +20,12 @@ public sealed class TransactionResponse
     public DateTime UpdatedAt { get; set; }
     public Guid AccountId { get; set; }
     public string AccountName { get; set; } = string.Empty;
+    public string AccountInstitutionName { get; set; } = string.Empty;
+    public string AccountType { get; set; } = string.Empty;
+    public string? AccountSubtype { get; set; }
+    public string? AccountLastFour { get; set; }
+    public string? AccountCountry { get; set; }
+    public string AccountProvider { get; set; } = string.Empty;
     public Guid? CategoryId { get; set; }
     public string? CategoryName { get; set; }
 }
