@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Layers, RefreshCw } from "lucide-react";
+import { Download, Layers, RefreshCw } from "lucide-react";
 import {
   applyMerchantRules,
   getAccounts,
@@ -14,6 +14,11 @@ import {
   prepareAccountsForDisplay,
   prepareTransactionsForDisplay
 } from "@/lib/calculations";
+import {
+  buildTransactionsCsv,
+  filterTransactionsByMonth,
+  getTransactionMonthOptions
+} from "@/lib/csv";
 import { ErrorBanner, LoadingBlock, SuccessBanner } from "@/components/Feedback";
 import { FilterPanel } from "@/components/FilterPanel";
 import { ManualTransactionForm } from "@/components/ManualTransactionForm";
@@ -37,6 +42,7 @@ export default function TransactionsPage() {
   const [filters, setFilters] = useState(initialFilters);
   const [categorySelections, setCategorySelections] = useState({});
   const [rememberSelections, setRememberSelections] = useState({});
+  const [exportMonth, setExportMonth] = useState("");
   const [savingId, setSavingId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -82,6 +88,27 @@ export default function TransactionsPage() {
     [transactions, filters]
   );
 
+  const exportMonthOptions = useMemo(
+    () => getTransactionMonthOptions(filteredTransactions),
+    [filteredTransactions]
+  );
+
+  useEffect(() => {
+    if (exportMonthOptions.length === 0) {
+      setExportMonth("");
+      return;
+    }
+
+    if (!exportMonthOptions.some((option) => option.value === exportMonth)) {
+      setExportMonth(exportMonthOptions[0].value);
+    }
+  }, [exportMonth, exportMonthOptions]);
+
+  const monthlyExportTransactions = useMemo(
+    () => filterTransactionsByMonth(filteredTransactions, exportMonth),
+    [filteredTransactions, exportMonth]
+  );
+
   async function saveCategory(transactionId, categoryId, rememberMerchant) {
     setSavingId(transactionId);
     setError("");
@@ -120,6 +147,27 @@ export default function TransactionsPage() {
     }
   }
 
+  function exportMonthlyCsv() {
+    if (!monthlyExportTransactions.length || !exportMonth) {
+      return;
+    }
+
+    const csv = buildTransactionsCsv(monthlyExportTransactions);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const downloadLink = document.createElement("a");
+
+    downloadLink.href = url;
+    downloadLink.download = `transactions-${exportMonth}.csv`;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    downloadLink.remove();
+    URL.revokeObjectURL(url);
+    setSuccess(
+      `${monthlyExportTransactions.length} transactions exported for ${exportMonth}.`
+    );
+  }
+
   return (
     <>
       <PageHeader
@@ -149,6 +197,34 @@ export default function TransactionsPage() {
             <div>
               <h2>All transactions</h2>
               <p>{filteredTransactions.length} visible</p>
+            </div>
+
+            <div className="export-controls">
+              <select
+                value={exportMonth}
+                onChange={(event) => setExportMonth(event.target.value)}
+                disabled={exportMonthOptions.length === 0}
+                aria-label="Export month"
+              >
+                {exportMonthOptions.length === 0 ? (
+                  <option value="">No months</option>
+                ) : (
+                  exportMonthOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label} ({option.count})
+                    </option>
+                  ))
+                )}
+              </select>
+              <button
+                className="button secondary"
+                type="button"
+                onClick={exportMonthlyCsv}
+                disabled={monthlyExportTransactions.length === 0}
+              >
+                <Download size={17} aria-hidden="true" />
+                <span>CSV</span>
+              </button>
             </div>
           </div>
 

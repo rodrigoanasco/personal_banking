@@ -453,6 +453,16 @@ input:disabled {
   color: var(--muted);
 }
 
+.export-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.export-controls select {
+  min-width: 190px;
+}
+
 .panel-stack {
   display: grid;
   gap: 18px;
@@ -939,6 +949,19 @@ textarea {
 
   .page-actions {
     justify-content: flex-start;
+  }
+
+  .panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .export-controls {
+    width: 100%;
+  }
+
+  .export-controls select {
+    min-width: 0;
   }
 
   .summary-grid {
