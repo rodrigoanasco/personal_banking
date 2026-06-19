@@ -91,6 +91,7 @@ app.MapGet("/", () => Results.Ok(new
         "/api/categories",
         "/api/transactions",
         "/api/merchant-rules",
+        "/api/wishlist/items",
         "/api/dashboard/summary",
         "/openapi/v1.json"
     }

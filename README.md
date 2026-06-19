@@ -147,6 +147,13 @@ Merchant Rules:
 - Create/update rules from a transaction categorization workflow.
 - Apply rules to uncategorized transactions.
 
+Wishlist:
+- Add and delete planned purchases.
+- Track name, category, URL, description, priority, price, saved amount, and optional target date.
+- Sort items by priority inside each category.
+- Show total and remaining savings needed by currency.
+- Surface subscription candidates such as Spotify from recent expense history.
+
 Plaid:
 - Create Link tokens.
 - Open Plaid Link from the frontend.
@@ -191,9 +198,10 @@ Run these scripts against the local PostgreSQL database as needed:
 ```text
 database/2026-05-20-create-plaid-items.sql
 database/2026-06-01-add-account-planning-amount.sql
+database/2026-06-19-create-wishlist-items.sql
 ```
 
-The scripts are idempotent where practical. The first creates Plaid Item storage. The second adds `accounts.planning_amount`.
+The scripts are idempotent where practical. The first creates Plaid Item storage. The second adds `accounts.planning_amount`. The third creates wishlist item storage.
 
 This project does not currently use a full EF migration history. The SQL files are the source of the incremental database changes that were added after the first local schema was created.
 
@@ -473,6 +481,15 @@ Dashboard:
 GET /api/dashboard/summary
 ```
 
+Wishlist:
+
+```http
+GET    /api/wishlist/items
+POST   /api/wishlist/items
+DELETE /api/wishlist/items/{id}
+GET    /api/wishlist/subscriptions
+```
+
 Plaid:
 
 ```http
@@ -492,6 +509,7 @@ All app endpoints are protected by auth except the root health/info endpoints an
 /transactions      Transaction list, filters, categorization, manual entry
 /categories        Category overview
 /merchant-rules    Merchant rule management
+/wishlist          Wishlist, savings targets, and detected subscriptions
 ```
 
 ## Testing And Build

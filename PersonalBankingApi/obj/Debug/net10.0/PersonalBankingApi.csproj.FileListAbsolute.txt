@@ -129,3 +129,10 @@ C:\Users\Rodrigo\AppData\Local\Temp\banking_tracker_api_build_verify\PersonalBan
 C:\Users\Rodrigo\AppData\Local\Temp\banking_tracker_api_build_verify\PersonalBankingApi.runtimeconfig.json
 C:\Users\Rodrigo\AppData\Local\Temp\banking_tracker_api_build_verify\PersonalBankingApi.dll
 C:\Users\Rodrigo\AppData\Local\Temp\banking_tracker_api_build_verify\PersonalBankingApi.pdb
+C:\Users\Rodrigo\AppData\Local\Temp\banking-api-build-check\appsettings.Development.json
+C:\Users\Rodrigo\AppData\Local\Temp\banking-api-build-check\appsettings.json
+C:\Users\Rodrigo\AppData\Local\Temp\banking-api-build-check\PersonalBankingApi.staticwebassets.endpoints.json
+C:\Users\Rodrigo\AppData\Local\Temp\banking-api-build-check\PersonalBankingApi.deps.json
+C:\Users\Rodrigo\AppData\Local\Temp\banking-api-build-check\PersonalBankingApi.runtimeconfig.json
+C:\Users\Rodrigo\AppData\Local\Temp\banking-api-build-check\PersonalBankingApi.dll
+C:\Users\Rodrigo\AppData\Local\Temp\banking-api-build-check\PersonalBankingApi.pdb
