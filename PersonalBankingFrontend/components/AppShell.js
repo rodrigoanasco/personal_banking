@@ -7,6 +7,7 @@ import {
   BadgeDollarSign,
   BarChart3,
   CircleDollarSign,
+  Heart,
   ListChecks,
   LogOut,
   PanelLeftClose,
@@ -19,6 +20,7 @@ const navigation = [
   { href: "/", label: "Dashboard", icon: BarChart3 },
   { href: "/transactions", label: "Transactions", icon: ReceiptText },
   { href: "/accounts", label: "Accounts", icon: CircleDollarSign },
+  { href: "/wishlist", label: "Wishlist", icon: Heart },
   { href: "/categories", label: "Categories", icon: Tags },
   { href: "/merchant-rules", label: "Merchant Rules", icon: ListChecks }
 ];

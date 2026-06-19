@@ -134,6 +134,27 @@ export function getDashboardSummary() {
   return apiRequest("/api/dashboard/summary");
 }
 
+export function getWishlistItems() {
+  return apiRequest("/api/wishlist/items");
+}
+
+export function createWishlistItem(payload) {
+  return apiRequest("/api/wishlist/items", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteWishlistItem(itemId) {
+  return apiRequest(`/api/wishlist/items/${itemId}`, {
+    method: "DELETE"
+  });
+}
+
+export function getWishlistSubscriptions() {
+  return apiRequest("/api/wishlist/subscriptions");
+}
+
 export function createPlaidLinkToken() {
   return apiRequest("/api/plaid/link-token", {
     method: "POST"
