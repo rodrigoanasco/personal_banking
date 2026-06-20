@@ -384,6 +384,24 @@ Frontend URL:
 http://localhost:3000
 ```
 
+### One-Click Local Launcher
+
+A desktop launcher can start the published API, start the production Next app, and open the browser:
+
+```text
+C:\Users\Rodrigo\Desktop\Banking Tracker.exe
+```
+
+Keep the launcher window open while using the app. Press `Q`, press `Ctrl+C`, or close the launcher window to stop the frontend and backend process trees.
+
+If the app code changes, rebuild the pieces used by the launcher:
+
+```powershell
+dotnet publish PersonalBankingApi\PersonalBankingApi.csproj -c Release -o PersonalBankingApi\bin\Release\net10.0\publish
+cd PersonalBankingFrontend
+npm run build
+```
+
 Health check:
 
 ```powershell
