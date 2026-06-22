@@ -61,6 +61,8 @@ internal static class Program
             Console.WriteLine("Press Q or Ctrl+C to stop the servers.");
             Console.WriteLine();
 
+            StopExistingAppServers(5288, 3000);
+
             var apiProcess = StartProcess(
                 ApiExecutable,
                 "",
@@ -125,7 +127,8 @@ internal static class Program
                     Console.WriteLine();
                     Console.WriteLine("One of the servers stopped. Shutting down the rest.");
                     StopServers();
-                    break;
+                    WaitBeforeExit();
+                    return 1;
                 }
 
                 await Task.Delay(250);
@@ -195,6 +198,62 @@ internal static class Program
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
         return process;
+    }
+
+    private static void StopExistingAppServers(params int[] ports)
+    {
+        var processIds = GetListeningProcessIds(ports).ToList();
+
+        foreach (var processId in processIds.Distinct())
+        {
+            Console.WriteLine($"Stopping existing app server on port {string.Join("/", ports)}.");
+            StopProcessTree(processId);
+        }
+    }
+
+    private static IEnumerable<int> GetListeningProcessIds(IEnumerable<int> ports)
+    {
+        var portSet = ports.ToHashSet();
+        using var netstat = Process.Start(new ProcessStartInfo
+        {
+            FileName = "netstat.exe",
+            Arguments = "-ano -p tcp",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        });
+
+        if (netstat == null)
+        {
+            yield break;
+        }
+
+        var output = netstat.StandardOutput.ReadToEnd();
+        netstat.WaitForExit(5000);
+
+        foreach (var line in output.Split(Environment.NewLine))
+        {
+            var columns = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            if (columns.Length < 5 || !columns.Contains("LISTENING"))
+            {
+                continue;
+            }
+
+            var localAddress = columns[1];
+            var processIdText = columns[^1];
+
+            if (!int.TryParse(processIdText, out var processId))
+            {
+                continue;
+            }
+
+            if (portSet.Any(port => localAddress.EndsWith($":{port}", StringComparison.Ordinal)))
+            {
+                yield return processId;
+            }
+        }
     }
 
     private static async Task WaitForEndpointAsync(string url, string label)

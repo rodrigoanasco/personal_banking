@@ -32,8 +32,6 @@ const initialForm = {
   category: "Extra",
   priority: "3",
   url: "",
-  savedAmount: "",
-  targetDate: "",
   description: ""
 };
 
@@ -120,9 +118,7 @@ export default function WishlistPage() {
         url: form.url || null,
         price: Number(form.price),
         currency: form.currency,
-        priority: Number(form.priority),
-        savedAmount: Number(form.savedAmount || 0),
-        targetDate: form.targetDate || null
+        priority: Number(form.priority)
       });
       setForm(initialForm);
       await loadWishlist();
@@ -155,7 +151,7 @@ export default function WishlistPage() {
       <PageHeader
         eyebrow="Planning"
         title="Wishlist"
-        description="Prioritized purchases, extra savings targets, and subscription signals from transaction history."
+        description="Prioritized purchases, category totals, and subscription signals from transaction history."
         actions={
           <button className="button secondary" type="button" onClick={loadWishlist}>
             <RefreshCw size={17} aria-hidden="true" />
@@ -258,14 +254,6 @@ export default function WishlistPage() {
                                 </dd>
                               </div>
                               <div>
-                                <dt>Saved</dt>
-                                <dd>
-                                  {formatCurrency(item.savedAmount, item.currency, {
-                                    showSign: false
-                                  })}
-                                </dd>
-                              </div>
-                              <div>
                                 <dt>Remaining</dt>
                                 <dd>
                                   {formatCurrency(item.remainingAmount, item.currency, {
@@ -273,26 +261,9 @@ export default function WishlistPage() {
                                   })}
                                 </dd>
                               </div>
-                              <div>
-                                <dt>Monthly</dt>
-                                <dd>
-                                  {item.monthlySavingsNeeded
-                                    ? formatCurrency(
-                                        item.monthlySavingsNeeded,
-                                        item.currency,
-                                        { showSign: false }
-                                      )
-                                    : "No target"}
-                                </dd>
-                              </div>
                             </dl>
 
                             <div className="wishlist-item-footer">
-                              <span className="muted">
-                                {item.targetDate
-                                  ? `Target ${formatDate(item.targetDate)}`
-                                  : "No target date"}
-                              </span>
                               <div className="wishlist-actions">
                                 {item.url ? (
                                   <a
@@ -388,30 +359,6 @@ export default function WishlistPage() {
                           </option>
                         ))}
                       </select>
-                    </label>
-
-                    <label>
-                      <span>Saved</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={form.savedAmount}
-                        onChange={(event) =>
-                          updateField("savedAmount", event.target.value)
-                        }
-                      />
-                    </label>
-
-                    <label>
-                      <span>Target date</span>
-                      <input
-                        type="date"
-                        value={form.targetDate}
-                        onChange={(event) =>
-                          updateField("targetDate", event.target.value)
-                        }
-                      />
                     </label>
 
                     <label>
